@@ -438,7 +438,6 @@
 <script>
 (function(){
 const STAFF_PIN = "2026";
-// Masukkan URL API Cloud / Google Sheets Anda di sini:
 const CLOUD_API_URL = "https://sheetdb.io/api/v1/yvgkgqviy4erx";
 
 let catalog = null;
@@ -468,19 +467,43 @@ function fmtRupiah(n){
  return 'Rp' + Math.round(n).toLocaleString('id-ID');
 }
 
-// Fungsi Fetch otomatis dari Cloud
+// Fungsi Fetch otomatis dari Cloud dengan pemetaan kolom yang fleksibel
 async function fetchCloudData(){
  metaDetail.textContent = 'Menghubungkan ke cloud...';
  try {
-   // Contoh mengambil data JSON dari API Cloud / Google Sheets
    const response = await fetch(CLOUD_API_URL);
    if (!response.ok) throw new Error('Gagal mengambil data dari server cloud.');
-   const data = await response.json();
+   const rawData = await response.json();
    
-   // Format data agar sesuai dengan struktur katalog aplikasi
+   // Petakan data baris dari Google Sheets ke format properti standar (desc, code, price, available)
+   const formattedItems = rawData.map(row => {
+     let desc = row['Item Description'] || row['Description'] || row['desc'] || row['nama'] || row['Item Name'] || row[2] || '';
+     let code = row['Item No.'] || row['Item Code'] || row['code'] || row['kode'] || row['SKU'] || row[1] || '';
+     let price = Number(row['List Price'] || row['Price'] || row['price'] || row['harga'] || row[8]) || 0;
+     let available = Number(row['Available'] || row['Stok'] || row['available'] || row['Qty'] || row[5]) || 0;
+
+     // Fallback pencarian teks jika kolom header tidak terdeteksi
+     if (!desc && typeof row === 'object') {
+       for (let k in row) {
+         let val = String(row[k] || '');
+         if (val.length > 3 && isNaN(val) && !val.includes('http') && !val.includes('SDN')) {
+           desc = val;
+           break;
+         }
+       }
+     }
+
+     return {
+       desc: String(desc).trim(),
+       code: String(code).trim(),
+       price: price,
+       available: available
+     };
+   });
+   
    catalog = {
-     items: data, // Array objek item dari Google Sheets
-     serialIndex: {}, // Index serial number jika disediakan di Sheets
+     items: formattedItems,
+     serialIndex: {},
      updatedAt: new Date().toISOString()
    };
    
@@ -488,7 +511,6 @@ async function fetchCloudData(){
    metaDetail.textContent = `Sinkronisasi sukses · ${catalog.items.length} item`;
    renderEmpty();
  } catch(err) {
-   // Fallback ke localStorage jika offline/gagal
    const local = localStorage.getItem('inventory:latest');
    if (local) {
      catalog = JSON.parse(local);
@@ -552,8 +574,8 @@ function renderEmpty(){
 function renderItem(it){
  const priceStr = fmtRupiah(it.price);
  return `<div class="card">
- <div class="card-desc">${escapeHtml(it.desc || it.description)}</div>
- <div class="card-code">${escapeHtml(it.code || it.itemNo)}</div>
+ <div class="card-desc">${escapeHtml(it.desc || 'Tanpa Nama')}</div>
+ <div class="card-code">${escapeHtml(it.code || '-')}</div>
  <div class="card-row"><span class="price">${priceStr}</span><span class="badge ready">READY · ${it.available || 0} pcs</span></div>
  </div>`;
 }
@@ -565,13 +587,14 @@ function doSearch(){
  if (!catalog || !catalog.items){ renderEmpty(); return; }
  if (!q){ renderEmpty(); return; }
  
+ const words = q.split(/\s+/).filter(Boolean);
  const matches = catalog.items.filter(it => {
    const hay = ((it.desc || '') + ' ' + (it.code || '')).toLowerCase();
-   return hay.includes(q);
+   return words.every(w => hay.includes(w));
  });
 
  if (matches.length === 0){
-   resultsEl.innerHTML = '<div class="empty">Tidak ditemukan.</div>';
+   resultsEl.innerHTML = '<div class="empty">Tidak ditemukan. Coba kata kunci lain.</div>';
    footNote.textContent = '';
    return;
  }
