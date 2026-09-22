@@ -127,72 +127,6 @@
  .verify-warn{color:var(--indent);font-weight:700;}
  .verify-bad{color:var(--out);font-weight:700;}
 
- /* Tombol Akses Pop-up SO Harian */
- #soLauncherSection{
- display:none;
- padding:12px 16px;
- border-bottom:1px solid var(--line);
- background:var(--staff-bg);
- }
- #soLauncherSection.show{display:flex; justify-content:space-between; align-items:center;}
- 
- /* Modal SO Harian Pop-up */
- #soModalOverlay{
- display:none;
- position:fixed;
- inset:0;
- background:rgba(10,11,15,0.8);
- z-index:100;
- align-items:center;
- justify-content:center;
- padding:16px;
- }
- #soModalOverlay.show{display:flex;}
- #soModalBox{
- background:var(--panel);
- border:1px solid var(--line);
- border-radius:12px;
- width:100%;
- max-width:600px;
- max-height:90vh;
- display:flex;
- flex-direction:column;
- overflow:hidden;
- }
- #soModalHeader{
- padding:14px 16px;
- border-bottom:1px solid var(--line);
- display:flex;
- justify-content:space-between;
- align-items:center;
- background:var(--panel-2);
- }
- #soModalBody{
- padding:16px;
- overflow-y:auto;
- flex:1;
- }
- .so-tab{
- flex:1;
- background:var(--panel-2);
- border:1px solid var(--line);
- color:var(--muted);
- font-size:11.5px;
- font-weight:600;
- padding:6px 8px;
- border-radius:6px;
- text-align:center;
- cursor:pointer;
- user-select:none;
- }
- .so-tab.active{
- color:var(--staff);
- border-color:var(--staff);
- background:var(--staff-bg);
- }
- .so-panel{display:none;}
- .so-panel.active{display:block;}
-
  .search-wrap{
  position:sticky;
  top:0;
@@ -260,40 +194,7 @@
  white-space:nowrap;
  }
  .badge.ready{color:var(--ready);background:var(--ready-bg);}
- .badge.indent{color:var(--indent);background:var(--indent-bg);}
  .badge.out{color:var(--out);background:var(--out-bg);}
- .branches{
- width:100%;
- font-size:12px;
- color:var(--muted);
- margin-top:6px;
- font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
- }
- .fifo-toggle{
- font-size:11.5px;
- font-weight:700;
- color:var(--staff);
- background:none;
- border:none;
- padding:8px 0 0;
- cursor:pointer;
- width:100%;
- text-align:left;
- }
- .fifo-list{
- margin-top:8px;
- border-top:1px dashed var(--line);
- padding-top:8px;
- }
- .fifo-row{
- display:flex;
- justify-content:space-between;
- font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
- font-size:11.5px;
- padding:3px 0;
- color:var(--muted);
- }
- .fifo-row.first{color:var(--ready);font-weight:700;}
  .note{
  font-size:11.5px;
  color:var(--muted);
@@ -356,7 +257,7 @@
  <div id="meta">
  <div id="metaFile" class="meta-file" style="display:none;">
  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
- <span id="metaFileName">Terhubung ke Cloud Database</span>
+ <span id="metaFileName">Terhubung ke Google Sheets</span>
  </div>
  <div id="metaDetail">Memuat data dari cloud...</div>
  </div>
@@ -365,55 +266,14 @@
  </header>
 
  <div id="syncSection">
- <span id="syncStatus">Data otomatis disinkronkan dari Google Sheets/Cloud.</span>
- <button class="sync-btn" id="forceSyncBtn">Muat Ulang Data Cloud</button>
- </div>
-
- <!-- Tombol Akses Pop-up SO Harian -->
- <div id="soLauncherSection">
- <span style="font-size:13px; font-weight:600; color:var(--staff);">Tugas Stock Opname Harian</span>
- <button id="openSoModalBtn" class="upload-btn" style="background:var(--staff-bg); color:var(--staff); border-color:var(--staff); font-size:12.5px; padding:6px 12px;">Buka Stock Opname Harian</button>
+ <span id="syncStatus">Data disinkronkan langsung dari Google Sheets.</span>
+ <button class="sync-btn" id="forceSyncBtn">Muat Ulang Data</button>
  </div>
 
  <div id="verifySection">
- <div class="label">Verifikasi Serial Number (FIFO) & Harga</div>
+ <div class="label">Verifikasi Serial Number & Harga</div>
  <input type="text" id="verifyInput" placeholder="Scan / ketik serial number unit..." autocomplete="off" />
  <div id="verifyResult"></div>
- </div>
-
- <!-- Pop-up Modal Stock Opname Harian (SDNC) -->
- <div id="soModalOverlay">
- <div id="soModalBox">
- <div id="soModalHeader">
- <span style="font-size:14px; font-weight:700; color:var(--staff);">Stock Opname Harian (SDNC)</span>
- <button id="closeSoModalBtn" style="background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; font-weight:bold;">&times;</button>
- </div>
- <div id="soModalBody">
- <div class="so-tabs" style="display:flex; gap:6px; margin-bottom:12px;">
- <div class="so-tab active" data-target="soGadget">HP (Gadget)</div>
- <div class="so-tab" data-target="soAcc">Aksesoris (ACC)</div>
- <div class="so-tab" data-target="soItr">ITR Gantung</div>
- </div>
- 
- <div id="soGadget" class="so-panel active">
- <div style="margin-bottom:8px;"><input type="text" id="soGadgetInput" placeholder="Cari deskripsi / IMEI HP..." autocomplete="off" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; font-family:ui-monospace,monospace; padding:8px 10px; border-radius:6px; outline:none;" /></div>
- <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:6px;"><span>Daftar Checklist HP</span><span id="soGadgetStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span></div>
- <div id="soGadgetList" style="max-height:260px; overflow-y:auto; font-size:12px;"></div>
- </div>
-
- <div id="soAcc" class="so-panel">
- <div style="margin-bottom:8px;"><input type="text" id="soAccInput" placeholder="Cari nama / kode aksesoris..." autocomplete="off" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; padding:8px 10px; border-radius:6px; outline:none;" /></div>
- <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:6px;"><span>Rekonsiliasi Stok ACC</span><span id="soAccStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span></div>
- <div id="soAccContainer" style="max-height:260px; overflow-y:auto;"></div>
- </div>
-
- <div id="soItr" class="so-panel">
- <div style="font-size:11.5px; color:var(--muted); margin-bottom:8px;">Monitoring dokumen ITR gantung.</div>
- <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:6px;"><span>Daftar Dokumen ITR</span><span id="soItrStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span></div>
- <div id="soItrContainer" style="max-height:260px; overflow-y:auto;"></div>
- </div>
- </div>
- </div>
  </div>
 
  <div class="search-wrap">
@@ -440,11 +300,9 @@
 const STAFF_PIN = "2026";
 const CLOUD_API_URL = "https://sheetdb.io/api/v1/yvgkgqviy4erx";
 
-let catalog = null;
-let soData = null;
+let catalogItems = [];
 let staffMode = false;
 const RESULT_LIMIT = 60;
-const openFifo = new Set();
 
 const resultsEl = document.getElementById('results');
 const metaDetail = document.getElementById('metaDetail');
@@ -467,31 +325,24 @@ function fmtRupiah(n){
  return 'Rp' + Math.round(n).toLocaleString('id-ID');
 }
 
-// Fungsi Fetch otomatis dari Cloud dengan pemetaan kolom yang fleksibel
+// Fetch data disesuaikan dengan kolom persis dari file Google Sheets Anda
 async function fetchCloudData(){
- metaDetail.textContent = 'Menghubungkan ke cloud...';
+ metaDetail.textContent = 'Menghubungkan ke Google Sheets...';
  try {
    const response = await fetch(CLOUD_API_URL);
-   if (!response.ok) throw new Error('Gagal mengambil data dari server cloud.');
+   if (!response.ok) throw new Error('Gagal mengambil data.');
    const rawData = await response.json();
    
-   // Petakan data baris dari Google Sheets ke format properti standar (desc, code, price, available)
-   const formattedItems = rawData.map(row => {
-     let desc = row['Item Description'] || row['Description'] || row['desc'] || row['nama'] || row['Item Name'] || row[2] || '';
-     let code = row['Item No.'] || row['Item Code'] || row['code'] || row['kode'] || row['SKU'] || row[1] || '';
-     let price = Number(row['List Price'] || row['Price'] || row['price'] || row['harga'] || row[8]) || 0;
-     let available = Number(row['Available'] || row['Stok'] || row['available'] || row['Qty'] || row[5]) || 0;
-
-     // Fallback pencarian teks jika kolom header tidak terdeteksi
-     if (!desc && typeof row === 'object') {
-       for (let k in row) {
-         let val = String(row[k] || '');
-         if (val.length > 3 && isNaN(val) && !val.includes('http') && !val.includes('SDN')) {
-           desc = val;
-           break;
-         }
-       }
-     }
+   catalogItems = rawData.map(row => {
+     // Mengambil nama kolom persis sesuai CSV/Google Sheets Anda:
+     // 'Item No.', 'Item Description', ' List Price', 'Available'
+     let desc = row['Item Description'] || row['Description'] || '';
+     let code = row['Item No.'] || row['Item Code'] || '';
+     
+     // Membersihkan spasi pada key List Price jika ada
+     let rawPrice = row[' List Price'] !== undefined ? row[' List Price'] : row['List Price'];
+     let price = Number(rawPrice) || 0;
+     let available = Number(row['Available']) || 0;
 
      return {
        desc: String(desc).trim(),
@@ -499,25 +350,13 @@ async function fetchCloudData(){
        price: price,
        available: available
      };
-   });
-   
-   catalog = {
-     items: formattedItems,
-     serialIndex: {},
-     updatedAt: new Date().toISOString()
-   };
+   }).filter(item => item.desc || item.code);
    
    metaFile.style.display = 'flex';
-   metaDetail.textContent = `Sinkronisasi sukses · ${catalog.items.length} item`;
+   metaDetail.textContent = `Sinkronisasi sukses · ${catalogItems.length} item`;
    renderEmpty();
  } catch(err) {
-   const local = localStorage.getItem('inventory:latest');
-   if (local) {
-     catalog = JSON.parse(local);
-     metaDetail.textContent = 'Mode Offline (Data Lokal Tersimpan)';
-   } else {
-     metaDetail.textContent = 'Gagal memuat data cloud. Periksa koneksi.';
-   }
+   metaDetail.textContent = 'Gagal memuat data. Periksa koneksi / URL API.';
  }
 }
 
@@ -532,7 +371,6 @@ staffToggle.addEventListener('click', function(){
    staffMode = false;
    syncSection.classList.remove('show');
    verifySection.classList.remove('show');
-   document.getElementById('soLauncherSection').classList.remove('show');
    staffToggle.classList.remove('active');
    staffToggle.textContent = 'Staff Gudang';
    doSearch();
@@ -549,7 +387,6 @@ pinSubmit.addEventListener('click', function(){
    staffMode = true;
    syncSection.classList.add('show');
    verifySection.classList.add('show');
-   document.getElementById('soLauncherSection').classList.add('show');
    staffToggle.classList.add('active');
    staffToggle.textContent = 'Keluar Mode Staff';
    pinOverlay.classList.remove('show');
@@ -564,8 +401,8 @@ pinCancel.addEventListener('click', () => pinOverlay.classList.remove('show'));
 document.getElementById('forceSyncBtn').addEventListener('click', fetchCloudData);
 
 function renderEmpty(){
- if (!catalog || !catalog.items || catalog.items.length === 0){
-   resultsEl.innerHTML = '<div class="empty">Belum ada data tersedia di cloud.</div>';
+ if (!catalogItems || catalogItems.length === 0){
+   resultsEl.innerHTML = '<div class="empty">Belum ada data tersedia.</div>';
  } else {
    resultsEl.innerHTML = '<div class="empty">Ketik nama atau kode barang untuk mulai mencari.</div>';
  }
@@ -574,9 +411,9 @@ function renderEmpty(){
 function renderItem(it){
  const priceStr = fmtRupiah(it.price);
  return `<div class="card">
- <div class="card-desc">${escapeHtml(it.desc || 'Tanpa Nama')}</div>
- <div class="card-code">${escapeHtml(it.code || '-')}</div>
- <div class="card-row"><span class="price">${priceStr}</span><span class="badge ready">READY · ${it.available || 0} pcs</span></div>
+ <div class="card-desc">${escapeHtml(it.desc)}</div>
+ <div class="card-code">${escapeHtml(it.code)}</div>
+ <div class="card-row"><span class="price">${priceStr}</span><span class="badge ready">READY · ${it.available} pcs</span></div>
  </div>`;
 }
 
@@ -584,12 +421,12 @@ searchInput.addEventListener('input', doSearch);
 
 function doSearch(){
  const q = searchInput.value.trim().toLowerCase();
- if (!catalog || !catalog.items){ renderEmpty(); return; }
+ if (!catalogItems || catalogItems.length === 0){ renderEmpty(); return; }
  if (!q){ renderEmpty(); return; }
  
  const words = q.split(/\s+/).filter(Boolean);
- const matches = catalog.items.filter(it => {
-   const hay = ((it.desc || '') + ' ' + (it.code || '')).toLowerCase();
+ const matches = catalogItems.filter(it => {
+   const hay = (it.desc + ' ' + it.code).toLowerCase();
    return words.every(w => hay.includes(w));
  });
 
@@ -602,7 +439,7 @@ function doSearch(){
  footNote.textContent = `${matches.length} hasil ditemukan.`;
 }
 
-// Inisialisasi awal ambil data dari cloud
+// Inisialisasi awal
 fetchCloudData();
 
 })();
