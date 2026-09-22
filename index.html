@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Cek Harga & Stok (Cloud Sync)</title>
+<title>Cek Harga & Stok</title>
 <style>
  :root{
  --bg:#181B22;
@@ -76,7 +76,7 @@
  user-select:none;
  }
  #staffToggle.active{color:var(--staff);border-color:var(--staff);background:var(--staff-bg);}
- #syncSection{
+ #uploadSection{
  padding:12px 16px;
  border-bottom:1px solid var(--line);
  display:none;
@@ -84,19 +84,50 @@
  gap:10px;
  flex-wrap:wrap;
  background:var(--staff-bg);
- font-size:13px;
  }
- #syncSection.show{display:flex;}
- .sync-btn{
- background:var(--staff);
- color:#0B0D12;
- border:none;
- padding:8px 14px;
+ #uploadSection.show{display:flex;}
+ .upload-actions{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ flex-wrap:wrap;
+ width:100%;
+ }
+ .file-info-badge{
+ width:100%;
+ font-size:12.5px;
+ color:var(--text);
+ background:var(--panel);
+ border:1px solid var(--line);
+ border-radius:6px;
+ padding:6px 10px;
+ display:flex;
+ align-items:center;
+ gap:6px;
+ word-break:break-all;
+ }
+ .file-info-badge .file-label{
+ color:var(--muted);
+ }
+ .file-info-badge .file-name{
+ font-weight:600;
+ color:var(--staff);
+ font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+ }
+ .upload-btn{
+ display:inline-block;
+ background:var(--panel-2);
+ border:1px solid var(--line);
+ color:var(--text);
+ padding:9px 14px;
  border-radius:8px;
- font-size:13px;
- font-weight:700;
+ font-size:14px;
+ font-weight:600;
  cursor:pointer;
+ user-select:none;
  }
+ .upload-btn:active{background:#2E3440;}
+ #uploadStatus{font-size:12.5px;color:var(--muted);}
  #verifySection{
  display:none;
  padding:14px 16px;
@@ -126,7 +157,36 @@
  .verify-ok{color:var(--ready);font-weight:700;}
  .verify-warn{color:var(--indent);font-weight:700;}
  .verify-bad{color:var(--out);font-weight:700;}
-
+ 
+ /* SO Harian Styles */
+ #soSection{
+ display:none;
+ padding:14px 16px;
+ border-bottom:1px solid var(--line);
+ background:var(--panel);
+ }
+ #soSection.show{display:block;}
+ .so-tab{
+ flex:1;
+ background:var(--panel-2);
+ border:1px solid var(--line);
+ color:var(--muted);
+ font-size:11.5px;
+ font-weight:600;
+ padding:6px 8px;
+ border-radius:6px;
+ text-align:center;
+ cursor:pointer;
+ user-select:none;
+ }
+ .so-tab.active{
+ color:var(--staff);
+ border-color:var(--staff);
+ background:var(--staff-bg);
+ }
+ .so-panel{display:none;}
+ .so-panel.active{display:block;}
+ 
  .search-wrap{
  position:sticky;
  top:0;
@@ -194,7 +254,40 @@
  white-space:nowrap;
  }
  .badge.ready{color:var(--ready);background:var(--ready-bg);}
+ .badge.indent{color:var(--indent);background:var(--indent-bg);}
  .badge.out{color:var(--out);background:var(--out-bg);}
+ .branches{
+ width:100%;
+ font-size:12px;
+ color:var(--muted);
+ margin-top:6px;
+ font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+ }
+ .fifo-toggle{
+ font-size:11.5px;
+ font-weight:700;
+ color:var(--staff);
+ background:none;
+ border:none;
+ padding:8px 0 0;
+ cursor:pointer;
+ width:100%;
+ text-align:left;
+ }
+ .fifo-list{
+ margin-top:8px;
+ border-top:1px dashed var(--line);
+ padding-top:8px;
+ }
+ .fifo-row{
+ display:flex;
+ justify-content:space-between;
+ font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+ font-size:11.5px;
+ padding:3px 0;
+ color:var(--muted);
+ }
+ .fifo-row.first{color:var(--ready);font-weight:700;}
  .note{
  font-size:11.5px;
  color:var(--muted);
@@ -257,17 +350,84 @@
  <div id="meta">
  <div id="metaFile" class="meta-file" style="display:none;">
  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
- <span id="metaFileName">Terhubung ke Google Sheets</span>
+ <span id="metaFileName"></span>
  </div>
- <div id="metaDetail">Memuat data dari cloud...</div>
+ <div id="metaDetail">Belum ada data</div>
  </div>
  </div>
  <button id="staffToggle">Staff Gudang</button>
  </header>
 
- <div id="syncSection">
- <span id="syncStatus">Data disinkronkan langsung dari Google Sheets.</span>
- <button class="sync-btn" id="forceSyncBtn">Muat Ulang Data</button>
+ <div id="uploadSection">
+ <div class="upload-actions">
+ <label class="upload-btn" for="fileInput">Update Data Stok Hari Ini</label>
+ <input type="file" id="fileInput" accept=".xlsx" style="display:none" />
+ <button id="resetDataBtn" class="upload-btn" style="background:var(--out-bg); color:var(--out); border-color:var(--out);">Hapus Data</button>
+ <span id="uploadStatus"></span>
+ </div>
+ <div id="uploadFileInfo" class="file-info-badge" style="display:none;">
+ <span class="file-label">File saat ini:</span>
+ <span class="file-name" id="currentFileName"></span>
+ </div>
+ </div>
+
+ <div id="verifySection">
+ <div class="label">Verifikasi Serial Number (FIFO)</div>
+ <input type="text" id="verifyInput" placeholder="Scan / ketik serial number unit..." autocomplete="off" />
+ <div id="verifyResult"></div>
+ </div>
+
+ <!-- Modul Stock Opname Harian SDNC -->
+ <div id="soSection">
+ <div class="so-title" style="font-size:13px; font-weight:700; color:var(--staff); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+ <span>Stock Opname Harian (SDNC)</span>
+ <div style="display:flex; align-items:center; gap:8px;">
+ <label class="upload-btn" style="font-size:11px; padding:4px 8px;" for="soFileInput">Upload File SO Excel</label>
+ <input type="file" id="soFileInput" accept=".xlsx" style="display:none" />
+ <span id="soSummaryInfo" style="font-size:11px; color:var(--muted);">Belum ada data SO</span>
+ </div>
+ </div>
+ <div class="so-tabs" style="display:flex; gap:6px; margin-bottom:12px;">
+ <div class="so-tab active" data-target="soGadget">HP (Gadget)</div>
+ <div class="so-tab" data-target="soAcc">Aksesoris (ACC)</div>
+ <div class="so-tab" data-target="soItr">ITR Gantung</div>
+ </div>
+ 
+ <!-- Tab 1: Gadget -->
+ <div id="soGadget" class="so-panel active">
+ <div class="so-card" style="background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; font-size:12.5px;">
+ <div class="so-card-row" style="display:flex; justify-content:space-between; margin-bottom:6px;">
+ <strong>Checklist HP / Gadget</strong>
+ <span id="soGadgetStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
+ </div>
+ <input type="text" id="soGadgetInput" placeholder="Cari deskripsi / IMEI HP..." autocomplete="off" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; font-family:ui-monospace,monospace; padding:8px 10px; border-radius:6px; outline:none;" />
+ </div>
+ <div id="soGadgetList" style="max-height:220px; overflow-y:auto; font-size:12px;"></div>
+ </div>
+
+ <!-- Tab 2: Aksesoris -->
+ <div id="soAcc" class="so-panel">
+ <div class="so-card" style="background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; font-size:12.5px;">
+ <div class="so-card-row" style="display:flex; justify-content:space-between; margin-bottom:4px;">
+ <strong>Rekonsiliasi Stok ACC</strong>
+ <span id="soAccStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
+ </div>
+ <input type="text" id="soAccInput" placeholder="Cari nama / kode aksesoris..." autocomplete="off" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; padding:6px 10px; border-radius:6px; outline:none; margin-top:6px;" />
+ </div>
+ <div id="soAccContainer" style="max-height:220px; overflow-y:auto;"></div>
+ </div>
+
+ <!-- Tab 3: ITR Gantung -->
+ <div id="soItr" class="so-panel">
+ <div class="so-card" style="background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; font-size:12.5px;">
+ <div class="so-card-row" style="display:flex; justify-content:space-between; margin-bottom:4px;">
+ <strong>Monitoring ITR Gantung</strong>
+ <span id="soItrStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
+ </div>
+ <div style="font-size:11px; color:var(--muted); margin-bottom:6px;">Daftar dokumen ITR gantung yang perlu diperiksa ulang.</div>
+ </div>
+ <div id="soItrContainer" style="max-height:220px; overflow-y:auto;"></div>
+ </div>
  </div>
 
  <div class="search-wrap">
@@ -291,20 +451,56 @@
 
 <script>
 (function(){
-const STAFF_PIN = "2026";
-const CLOUD_API_URL = "https://sheetdb.io/api/v1/yvgkgqviy4erx";
+ function showError(msg){
+ let el = document.getElementById('debugBanner');
+ if (!el){
+ el = document.createElement('div');
+ el.id = 'debugBanner';
+ el.style.cssText = 'position:sticky;top:0;z-index:999;background:#C0392B;color:#fff;padding:10px 14px;font-size:13px;font-family:monospace;white-space:pre-wrap;';
+ document.body.insertBefore(el, document.body.firstChild);
+ }
+ el.textContent = 'ERROR: ' + msg;
+ }
+ window.addEventListener('error', function(e){ showError(e.message + ' (line ' + e.lineno + ')'); });
+ window.__showError = showError;
+})();
 
-let catalogItems = [];
+try{
+const STAFF_PIN = "2026";
+
+let catalog = null;
+let soData = null;
 let staffMode = false;
 const RESULT_LIMIT = 60;
+const openFifo = new Set();
 
 const resultsEl = document.getElementById('results');
 const metaDetail = document.getElementById('metaDetail');
 const metaFile = document.getElementById('metaFile');
-const syncSection = document.getElementById('syncSection');
-const staffToggle = document.getElementById('staffToggle');
+const metaFileName = document.getElementById('metaFileName');
+const uploadFileInfo = document.getElementById('uploadFileInfo');
+const currentFileName = document.getElementById('currentFileName');
+const statusEl = document.getElementById('uploadStatus');
 const searchInput = document.getElementById('searchInput');
 const footNote = document.getElementById('footNote');
+const staffToggle = document.getElementById('staffToggle');
+const uploadSection = document.getElementById('uploadSection');
+const verifySection = document.getElementById('verifySection');
+const verifyInput = document.getElementById('verifyInput');
+const verifyResult = document.getElementById('verifyResult');
+
+// SO Elements
+const soSection = document.getElementById('soSection');
+const soFileInput = document.getElementById('soFileInput');
+const soSummaryInfo = document.getElementById('soSummaryInfo');
+const soGadgetInput = document.getElementById('soGadgetInput');
+const soGadgetList = document.getElementById('soGadgetList');
+const soGadgetStats = document.getElementById('soGadgetStats');
+const soAccInput = document.getElementById('soAccInput');
+const soAccContainer = document.getElementById('soAccContainer');
+const soAccStats = document.getElementById('soAccStats');
+const soItrContainer = document.getElementById('soItrContainer');
+const soItrStats = document.getElementById('soItrStats');
 
 function escapeHtml(s){
  if (s === null || s === undefined) return '';
@@ -312,40 +508,19 @@ function escapeHtml(s){
 }
 
 function fmtRupiah(n){
- if (n === null || n === undefined || isNaN(n) || n === 0) return '—';
+ if (n === null || n === undefined || isNaN(n)) return '—';
  return 'Rp' + Math.round(n).toLocaleString('id-ID');
 }
 
-async function fetchCloudData(){
- metaDetail.textContent = 'Menghubungkan ke Google Sheets...';
- try {
-   const response = await fetch(CLOUD_API_URL);
-   if (!response.ok) throw new Error('Gagal mengambil data.');
-   const rawData = await response.json();
-   
-   catalogItems = rawData.map(row => {
-     let desc = row['Item Description'] || row['Description'] || '';
-     let code = row['Item No.'] || row['Item Code'] || '';
-     
-     // Menangani spasi pada kolom ' List Price' dari Google Sheets
-     let rawPrice = row[' List Price'] !== undefined ? row[' List Price'] : (row['List Price'] !== undefined ? row['List Price'] : 0);
-     let price = Number(String(rawPrice).replace(/[^0-9.-]+/g,"")) || 0;
-     let available = Number(row['Available']) || 0;
-
-     return {
-       desc: String(desc).trim(),
-       code: String(code).trim(),
-       price: price,
-       available: available
-     };
-   }).filter(item => item.desc || item.code);
-   
-   metaFile.style.display = 'flex';
-   metaDetail.textContent = `Sinkronisasi sukses · ${catalogItems.length} item`;
-   renderEmpty();
- } catch(err) {
-   metaDetail.textContent = 'Gagal memuat data. Periksa koneksi / URL API.';
- }
+function parseIdDate(str){
+ if (!str) return null;
+ const parts = String(str).trim().split(/[\/\-]/);
+ if (parts.length !== 3) return null;
+ let [d, m, y] = parts.map(p => parseInt(p, 10));
+ if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
+ if (y < 100) y += 2000;
+ const dt = new Date(y, m - 1, d);
+ return { ts: dt.getTime(), display: String(str).trim() };
 }
 
 const pinOverlay = document.getElementById('pinOverlay');
@@ -354,79 +529,549 @@ const pinError = document.getElementById('pinError');
 const pinSubmit = document.getElementById('pinSubmit');
 const pinCancel = document.getElementById('pinCancel');
 
-staffToggle.addEventListener('click', function(){
- if (staffMode){
-   staffMode = false;
-   syncSection.classList.remove('show');
-   staffToggle.classList.remove('active');
-   staffToggle.textContent = 'Staff Gudang';
-   doSearch();
-   return;
- }
+function openPinModal(){
  pinInput.value = '';
  pinError.textContent = '';
  pinOverlay.classList.add('show');
  pinInput.focus();
-});
-
-pinSubmit.addEventListener('click', function(){
+}
+function closePinModal(){
+ pinOverlay.classList.remove('show');
+}
+function enterStaffMode(){
+ staffMode = true;
+ uploadSection.classList.add('show');
+ verifySection.classList.add('show');
+ soSection.classList.add('show');
+ staffToggle.classList.add('active');
+ staffToggle.textContent = 'Keluar Mode Staff';
+ closePinModal();
+ doSearch();
+ renderSoModules();
+}
+function checkPin(){
  if (pinInput.value === STAFF_PIN){
-   staffMode = true;
-   syncSection.classList.add('show');
-   staffToggle.classList.add('active');
-   staffToggle.textContent = 'Keluar Mode Staff';
-   pinOverlay.classList.remove('show');
-   doSearch();
+ enterStaffMode();
  } else {
-   pinError.textContent = 'PIN salah!';
-   pinInput.value = '';
+ pinError.textContent = 'PIN salah, coba lagi.';
+ pinInput.value = '';
+ pinInput.focus();
  }
+}
+pinSubmit.addEventListener('click', checkPin);
+pinCancel.addEventListener('click', closePinModal);
+pinInput.addEventListener('keydown', function(e){
+ if (e.key === 'Enter') checkPin();
 });
-pinCancel.addEventListener('click', () => pinOverlay.classList.remove('show'));
 
-document.getElementById('forceSyncBtn').addEventListener('click', fetchCloudData);
+staffToggle.addEventListener('click', function(){
+ if (staffMode){
+ staffMode = false;
+ uploadSection.classList.remove('show');
+ verifySection.classList.remove('show');
+ soSection.classList.remove('show');
+ staffToggle.classList.remove('active');
+ staffToggle.textContent = 'Staff Gudang';
+ doSearch();
+ return;
+ }
+ openPinModal();
+});
+
+document.querySelectorAll('.so-tab').forEach(tab => {
+ tab.addEventListener('click', function(){
+ document.querySelectorAll('.so-tab').forEach(t => t.classList.remove('active'));
+ document.querySelectorAll('.so-panel').forEach(p => p.classList.remove('active'));
+ this.classList.add('active');
+ document.getElementById(this.getAttribute('data-target')).classList.add('active');
+ });
+});
+
+async function loadCatalog(){
+ try{
+ const res = localStorage.getItem('inventory:latest');
+ if (res){ catalog = JSON.parse(res); }
+ const soRes = localStorage.getItem('so:latest');
+ if (soRes){ soData = JSON.parse(soRes); }
+ }catch(e){}
+ renderMeta();
+ renderEmpty();
+ if (staffMode) renderSoModules();
+}
+
+function renderMeta(){
+ if (!catalog){
+ metaDetail.textContent = 'Belum ada data';
+ metaFile.style.display = 'none';
+ metaFileName.textContent = '';
+ uploadFileInfo.style.display = 'none';
+ currentFileName.textContent = '';
+ return;
+ }
+ const d = new Date(catalog.updatedAt);
+ const dateStr = d.toLocaleString('id-ID', {dateStyle:'medium', timeStyle:'short'});
+ metaDetail.textContent = `Update terakhir ${dateStr} · ${catalog.items.length} item`;
+
+ if (catalog.fileName){
+ metaFileName.textContent = catalog.fileName;
+ metaFile.style.display = 'flex';
+ currentFileName.textContent = catalog.fileName;
+ uploadFileInfo.style.display = 'flex';
+ } else {
+ metaFile.style.display = 'none';
+ metaFileName.textContent = '';
+ uploadFileInfo.style.display = 'none';
+ currentFileName.textContent = '';
+ }
+}
 
 function renderEmpty(){
- if (!catalogItems || catalogItems.length === 0){
-   resultsEl.innerHTML = '<div class="empty">Belum ada data tersedia.</div>';
+ if (!catalog){
+ resultsEl.innerHTML = '<div class="empty">Belum ada data tersimpan.<br/>Staff gudang: masuk mode Staff lalu upload file Excel hari ini.</div>';
  } else {
-   resultsEl.innerHTML = '<div class="empty">Ketik nama atau kode barang untuk mulai mencari.</div>';
+ resultsEl.innerHTML = '<div class="empty">Ketik nama atau kode barang untuk mulai mencari.</div>';
  }
+ footNote.textContent = '';
+}
+
+function buildCatalog(plRows, snRows, fileName){
+ const plMap = {};
+ for (let i = 1; i < plRows.length; i++){
+ const r = plRows[i];
+ if (!r || !r[1]) continue;
+ const itemNo = String(r[1]).trim();
+ const desc = r[2] ? String(r[2]).trim() : '';
+ const whcode = r[3] ? String(r[3]).trim() : '';
+ const available = Number(r[5]) || 0;
+ const instock = Number(r[7]) || 0;
+ const price = Number(r[8]) || 0;
+ if (!plMap[itemNo]) plMap[itemNo] = {desc:'', price:0, totalAvailable:0, totalInStock:0, locations:[]};
+ plMap[itemNo].totalAvailable += available;
+ plMap[itemNo].totalInStock += instock;
+ plMap[itemNo].locations.push({whcode, available, instock});
+ if (desc) plMap[itemNo].desc = desc;
+ if (price) plMap[itemNo].price = price;
+ }
+
+ const snMap = {};
+ const snDesc = {};
+ const ownUnitsMap = {};
+ for (let i = 1; i < snRows.length; i++){
+ const r = snRows[i];
+ if (!r || !r[1]) continue;
+ const itemCode = String(r[1]).trim();
+ const desc = r[2] ? String(r[2]).trim() : '';
+ const serial = r[3] ? String(r[3]).trim() : '';
+ const admDate = parseIdDate(r[4]);
+ const whcode = r[5] ? String(r[5]).trim() : '';
+ const status = r[7] ? String(r[7]).trim() : '';
+ if (desc && !snDesc[itemCode]) snDesc[itemCode] = desc;
+
+ if (status === 'Available' && whcode){
+ if (whcode.startsWith('SDN')){
+ if (serial && admDate){
+ if (!ownUnitsMap[itemCode]) ownUnitsMap[itemCode] = [];
+ ownUnitsMap[itemCode].push({ serial, whcode, admissionDate: admDate.display, ts: admDate.ts });
+ }
+ } else {
+ if (!snMap[itemCode]) snMap[itemCode] = {};
+ snMap[itemCode][whcode] = (snMap[itemCode][whcode] || 0) + 1;
+ }
+ }
+ }
+
+ const serialIndex = {};
+ Object.keys(ownUnitsMap).forEach(code => {
+ ownUnitsMap[code].sort((a, b) => a.ts - b.ts);
+ ownUnitsMap[code].forEach((u, idx) => {
+ serialIndex[u.serial] = {
+ code,
+ desc: snDesc[code] || (plMap[code] ? plMap[code].desc : ''),
+ admissionDate: u.admissionDate,
+ whcode: u.whcode,
+ rank: idx,
+ oldestSerial: ownUnitsMap[code][0].serial,
+ oldestDate: ownUnitsMap[code][0].admissionDate
+ };
+ });
+ });
+
+ const allCodes = new Set([...Object.keys(plMap), ...Object.keys(snMap), ...Object.keys(snDesc), ...Object.keys(ownUnitsMap)]);
+ const items = [];
+ allCodes.forEach(code => {
+ const pl = plMap[code];
+ items.push({
+ code,
+ desc: (pl && pl.desc) || snDesc[code] || '(tanpa nama)',
+ price: pl ? pl.price : null,
+ available: pl ? pl.totalAvailable : 0,
+ others: snMap[code] || null,
+ ownUnits: ownUnitsMap[code] || null,
+ inOwnList: !!pl
+ });
+ });
+
+ return { items, serialIndex, updatedAt: new Date().toISOString(), fileName };
+}
+
+function saveCatalog(cat){
+ try { localStorage.setItem('inventory:latest', JSON.stringify(cat)); } catch(e) {}
+}
+
+// Parser Khusus Struktur Sheet SDNC untuk SO Harian (GADGET, ACC, ITR GANTUNG)
+function parseSoSdncSheet(rows, fileName){
+ const hpList = [];
+ const accList = [];
+ const itrList = [];
+
+ let currentSection = null;
+ let idCounter = 1;
+
+ for (let i = 0; i < rows.length; i++){
+ const r = rows[i];
+ if (!r || r.length === 0) continue;
+ const textVal = String(r[0] || '').trim().toUpperCase();
+
+ if (textVal.includes('GADGET')) {
+ currentSection = 'HP';
+ continue;
+ } else if (textVal.includes('ACC')) {
+ currentSection = 'ACC';
+ continue;
+ } else if (textVal.includes('ITR GANTUNG')) {
+ currentSection = 'ITR';
+ continue;
+ }
+
+ // Lewati baris header tabel
+ if (textVal === 'WAREHOUSE CODE' || textVal === 'NO ITR' || textVal === 'TANGGAL' || textVal === '') {
+ continue;
+ }
+
+ if (currentSection === 'HP' && r[1] && r[2]) {
+ hpList.push({
+ id: idCounter++,
+ whcode: String(r[0] || '').trim(),
+ code: String(r[1] || '').trim(),
+ desc: String(r[2] || '').trim(),
+ detail: String(r[3] || '').trim(), // IMEI
+ checked: false
+ });
+ } else if (currentSection === 'ACC' && r[1] && r[2]) {
+ accList.push({
+ id: idCounter++,
+ whcode: String(r[0] || '').trim(),
+ code: String(r[1] || '').trim(),
+ desc: String(r[2] || '').trim(),
+ detail: String(r[3] || '').trim(), // Group Name
+ checked: false
+ });
+ } else if (currentSection === 'ITR' && r[0] && r[0] !== 'No ITR') {
+ itrList.push({
+ id: idCounter++,
+ code: String(r[0] || '').trim(), // No ITR
+ desc: String(r[2] || '').trim(), // Cabang Asal -> Tujuan
+ detail: 'Ekspedisi: ' + String(r[10] || '-') + ' | Resi: ' + String(r[9] || '-'),
+ checked: false
+ });
+ }
+ }
+
+ return { fileName, hp: hpList, acc: accList, itr: itrList, updatedAt: new Date().toISOString() };
+}
+
+document.getElementById('soFileInput').addEventListener('change', function(e){
+ const file = e.target.files[0];
+ if (!file) return;
+ ensureXlsxLoaded().then(() => {
+ const reader = new FileReader();
+ reader.onload = function(evt){
+ try{
+ const data = new Uint8Array(evt.target.result);
+ const wb = XLSX.read(data, {type:'array'});
+ 
+ // Cari sheet 'SDNC' secara otomatis
+ let targetSheetName = wb.SheetNames.find(n => n.toUpperCase().includes('SDNC')) || wb.SheetNames[0];
+ const sheet = wb.Sheets[targetSheetName];
+ const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:null});
+ 
+ soData = parseSoSdncSheet(rows, file.name);
+ localStorage.setItem('so:latest', JSON.stringify(soData));
+ renderSoModules();
+ }catch(err){
+ alert('Gagal membaca file SO SDNC: ' + err.message);
+ }
+ };
+ reader.readAsArrayBuffer(file);
+ }).catch(err => alert(err.message));
+ e.target.value = '';
+});
+
+function renderSoModules(){
+ if (!soData){
+ soSummaryInfo.textContent = 'Belum ada data SO';
+ soGadgetList.innerHTML = '<div style="color:var(--muted); text-align:center; padding:12px;">Belum ada file SO SDNC di-upload.</div>';
+ soAccContainer.innerHTML = '<div style="color:var(--muted); text-align:center; padding:12px;">Belum ada data ACC.</div>';
+ soItrContainer.innerHTML = '<div style="color:var(--muted); text-align:center; padding:12px;">Belum ada data ITR Gantung.</div>';
+ return;
+ }
+
+ soSummaryInfo.textContent = `${soData.fileName}`;
+
+ // Render HP
+ const hpFiltered = soData.hp.filter(item => {
+ const q = soGadgetInput.value.toLowerCase();
+ return !q || item.desc.toLowerCase().includes(q) || item.code.toLowerCase().includes(q) || item.detail.toLowerCase().includes(q);
+ });
+ const hpCheckedCount = soData.hp.filter(i => i.checked).length;
+ soGadgetStats.textContent = `${hpCheckedCount} / ${soData.hp.length} Selesai`;
+
+ soGadgetList.innerHTML = hpFiltered.length === 0 ? '<div style="color:var(--muted); padding:8px;">Tidak ditemukan.</div>' :
+ hpFiltered.map(item => `
+ <div style="display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px;">
+ <div>
+ <div style="font-weight:600; color:var(--text);">${escapeHtml(item.desc)}</div>
+ <div style="color:var(--muted); font-size:11px;">IMEI: ${escapeHtml(item.detail)} · ${escapeHtml(item.whcode)}</div>
+ </div>
+ <button onclick="toggleSoItem('hp', ${item.id})" style="background:${item.checked ? 'var(--ready-bg)' : 'var(--panel-2)'}; color:${item.checked ? 'var(--ready)' : 'var(--text)'}; border:1px solid ${item.checked ? 'var(--ready)' : 'var(--line)'}; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700;">
+ ${item.checked ? '✔ Sesuai' : 'Cek'}
+ </button>
+ </div>
+ `).join('');
+
+ // Render ACC
+ const accFiltered = soData.acc.filter(item => {
+ const q = soAccInput.value.toLowerCase();
+ return !q || item.desc.toLowerCase().includes(q) || item.code.toLowerCase().includes(q);
+ });
+ const accCheckedCount = soData.acc.filter(i => i.checked).length;
+ soAccStats.textContent = `${accCheckedCount} / ${soData.acc.length} Selesai`;
+
+ soAccContainer.innerHTML = accFiltered.length === 0 ? '<div style="color:var(--muted); padding:8px;">Tidak ada data aksesoris.</div>' :
+ accFiltered.map(item => `
+ <div style="display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+ <div>
+ <div style="font-weight:600; color:var(--text);">${escapeHtml(item.desc)}</div>
+ <div style="color:var(--muted); font-size:11px;">Kode: ${escapeHtml(item.code)} · ${escapeHtml(item.whcode)}</div>
+ </div>
+ <button onclick="toggleSoItem('acc', ${item.id})" style="background:${item.checked ? 'var(--ready-bg)' : 'var(--panel-2)'}; color:${item.checked ? 'var(--ready)' : 'var(--text)'}; border:1px solid ${item.checked ? 'var(--ready)' : 'var(--line)'}; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700;">
+ ${item.checked ? '✔ Sesuai' : 'Cek'}
+ </button>
+ </div>
+ `).join('');
+
+ // Render ITR
+ const itrCheckedCount = soData.itr.filter(i => i.checked).length;
+ soItrStats.textContent = `${itrCheckedCount} / ${soData.itr.length} Selesai`;
+
+ soItrContainer.innerHTML = soData.itr.length === 0 ? '<div style="color:var(--muted); padding:8px;">Tidak ada data ITR gantung.</div>' :
+ soData.itr.map(item => `
+ <div style="display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+ <div>
+ <div style="font-weight:600; color:var(--text);">No. ITR: ${escapeHtml(item.code)}</div>
+ <div style="color:var(--muted); font-size:11px;">${escapeHtml(item.detail)}</div>
+ </div>
+ <button onclick="toggleSoItem('itr', ${item.id})" style="background:${item.checked ? 'var(--ready-bg)' : 'var(--panel-2)'}; color:${item.checked ? 'var(--ready)' : 'var(--text)'}; border:1px solid ${item.checked ? 'var(--ready)' : 'var(--line)'}; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700;">
+ ${item.checked ? '✔ Selesai' : 'Pending'}
+ </button>
+ </div>
+ `).join('');
+}
+
+window.toggleSoItem = function(category, id){
+ if (!soData) return;
+ const list = soData[category];
+ if (!list) return;
+ const target = list.find(i => i.id === id);
+ if (target){
+ target.checked = !target.checked;
+ localStorage.setItem('so:latest', JSON.stringify(soData));
+ renderSoModules();
+ }
+};
+
+soGadgetInput.addEventListener('input', renderSoModules);
+soAccInput.addEventListener('input', renderSoModules);
+
+let xlsxLoadPromise = null;
+function ensureXlsxLoaded(){
+ if (window.XLSX) return Promise.resolve();
+ if (xlsxLoadPromise) return xlsxLoadPromise;
+ xlsxLoadPromise = new Promise((resolve, reject) => {
+ const s = document.createElement('script');
+ s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+ s.onload = () => resolve();
+ s.onerror = () => reject(new Error('Gagal memuat pustaka pembaca Excel.'));
+ document.head.appendChild(s);
+ });
+ return xlsxLoadPromise;
+}
+
+document.getElementById('fileInput').addEventListener('change', function(e){
+ const file = e.target.files[0];
+ if (!file) return;
+ statusEl.textContent = `Memuat pustaka pembaca Excel (${file.name})...`;
+ ensureXlsxLoaded().then(() => readWorkbookFile(file)).catch(err => {
+ statusEl.textContent = err.message;
+ }).finally(() => { e.target.value = ''; });
+});
+
+document.getElementById('resetDataBtn').addEventListener('click', function(){
+ if (confirm('Apakah Anda yakin ingin menghapus data stok & SO saat ini?')) {
+ localStorage.removeItem('inventory:latest');
+ localStorage.removeItem('so:latest');
+ catalog = null;
+ soData = null;
+ renderMeta();
+ renderEmpty();
+ if(staffMode) renderSoModules();
+ statusEl.textContent = 'Data berhasil dihapus.';
+ openFifo.clear();
+ }
+});
+
+function readWorkbookFile(file){
+ statusEl.textContent = `Membaca file ${file.name}...`;
+ const reader = new FileReader();
+ reader.onload = function(evt){
+ try{
+ const data = new Uint8Array(evt.target.result);
+ const wb = XLSX.read(data, {type:'array'});
+ let plSheetName = null;
+ let snSheetName = null;
+
+ wb.SheetNames.forEach(name => {
+ const upper = name.toUpperCase();
+ if (upper.includes('PL') || upper.includes('PRICE')) plSheetName = name;
+ if (upper.includes('SN') || upper.includes('SERIAL') || upper.includes('STOCK')) snSheetName = name;
+ });
+
+ const sheetList = wb.SheetNames;
+ const plSheet = wb.Sheets[plSheetName] || wb.Sheets[sheetList[0]];
+ const snSheet = wb.Sheets[snSheetName] || wb.Sheets[sheetList[1]];
+
+ if (!plSheet || !snSheet){
+ statusEl.textContent = 'File tidak sesuai — pastikan ada sheet untuk Price List (PL) dan Serial Number (SN).';
+ return;
+ }
+ const plRows = XLSX.utils.sheet_to_json(plSheet, {header:1, defval:null});
+ const snRows = XLSX.utils.sheet_to_json(snSheet, {header:1, defval:null});
+ catalog = buildCatalog(plRows, snRows, file.name);
+ saveCatalog(catalog);
+ renderMeta();
+ statusEl.textContent = `Data berhasil diperbarui dari ${file.name}.`;
+ openFifo.clear();
+ if (searchInput.value.trim()) doSearch(); else renderEmpty();
+ }catch(err){
+ statusEl.textContent = 'Gagal membaca file: ' + err.message;
+ }
+ };
+ reader.onerror = function(){ statusEl.textContent = 'Gagal membaca file.'; };
+ reader.readAsArrayBuffer(file);
+}
+
+function renderFifoList(it){
+ if (!staffMode || !it.ownUnits || it.ownUnits.length === 0) return '';
+ const isOpen = openFifo.has(it.code);
+ const label = isOpen ? 'Sembunyikan Serial Number' : `Lihat Serial Number (FIFO) · ${it.ownUnits.length} unit`;
+ let listHtml = '';
+ if (isOpen){
+ listHtml = '<div class="fifo-list">' + it.ownUnits.map((u, idx) => `
+ <div class="fifo-row${idx === 0 ? ' first' : ''}">
+ <span>${idx === 0 ? '➜ ' : ''}${escapeHtml(u.serial)}</span>
+ <span>${escapeHtml(u.admissionDate)} · ${escapeHtml(u.whcode)}</span>
+ </div>
+ `).join('') + '</div>';
+ }
+ return `<button class="fifo-toggle" data-code="${escapeHtml(it.code)}">${label}</button>${listHtml}`;
 }
 
 function renderItem(it){
  const priceStr = fmtRupiah(it.price);
+ let statusHtml;
+ if (it.available > 0){
+ statusHtml = `<span class="badge ready">READY · ${it.available} pcs</span>`;
+ } else if (it.others){
+ const sorted = Object.entries(it.others).sort((a,b) => b[1]-a[1]).slice(0,5);
+ const total = Object.values(it.others).reduce((a,b) => a+b, 0);
+ const list = sorted.map(([wh,qty]) => `${wh} (${qty})`).join(' · ');
+ statusHtml = `<span class="badge indent">INDENT · ${total} pcs di cabang lain</span><div class="branches">${escapeHtml(list)}</div>`;
+ } else if (it.inOwnList){
+ statusHtml = `<span class="badge out">HABIS · tidak ada di cabang lain</span>`;
+ } else {
+ statusHtml = `<span class="badge out">Tidak ada di price list ini</span>`;
+ }
  return `<div class="card">
  <div class="card-desc">${escapeHtml(it.desc)}</div>
  <div class="card-code">${escapeHtml(it.code)}</div>
- <div class="card-row"><span class="price">${priceStr}</span><span class="badge ready">READY · ${it.available} pcs</span></div>
+ <div class="card-row"><span class="price">${priceStr}</span>${statusHtml}</div>
+ ${renderFifoList(it)}
  </div>`;
 }
 
-searchInput.addEventListener('input', doSearch);
+resultsEl.addEventListener('click', function(e){
+ const btn = e.target.closest('.fifo-toggle');
+ if (!btn) return;
+ const code = btn.getAttribute('data-code');
+ if (openFifo.has(code)) openFifo.delete(code); else openFifo.add(code);
+ doSearch();
+});
+
+let searchTimer = null;
+searchInput.addEventListener('input', function(){
+ clearTimeout(searchTimer);
+ searchTimer = setTimeout(doSearch, 120);
+});
 
 function doSearch(){
  const q = searchInput.value.trim().toLowerCase();
- if (!catalogItems || catalogItems.length === 0){ renderEmpty(); return; }
+ if (!catalog){ renderEmpty(); return; }
  if (!q){ renderEmpty(); return; }
- 
  const words = q.split(/\s+/).filter(Boolean);
- const matches = catalogItems.filter(it => {
-   const hay = (it.desc + ' ' + it.code).toLowerCase();
-   return words.every(w => hay.includes(w));
+ const matches = catalog.items.filter(it => {
+ const hay = (it.desc + ' ' + it.code).toLowerCase();
+ return words.every(w => hay.includes(w));
  });
-
  if (matches.length === 0){
-   resultsEl.innerHTML = '<div class="empty">Tidak ditemukan. Coba kata kunci lain.</div>';
-   footNote.textContent = '';
-   return;
+ resultsEl.innerHTML = '<div class="empty">Tidak ditemukan. Coba kata kunci lain.</div>';
+ footNote.textContent = '';
+ return;
  }
- resultsEl.innerHTML = matches.slice(0, RESULT_LIMIT).map(renderItem).join('');
- footNote.textContent = `${matches.length} hasil ditemukan.`;
+ const shown = matches.slice(0, RESULT_LIMIT);
+ resultsEl.innerHTML = shown.map(renderItem).join('');
+ footNote.textContent = matches.length > RESULT_LIMIT
+ ? `Menampilkan ${RESULT_LIMIT} dari ${matches.length} hasil — perjelas kata kunci untuk mempersempit.`
+ : `${matches.length} hasil ditemukan.`;
 }
 
-fetchCloudData();
-})();
+let verifyTimer = null;
+verifyInput.addEventListener('input', function(){
+ clearTimeout(verifyTimer);
+ verifyTimer = setTimeout(doVerify, 120);
+});
+
+function doVerify(){
+ const sn = verifyInput.value.trim();
+ if (!sn){ verifyResult.innerHTML = ''; return; }
+ if (!catalog || !catalog.serialIndex){
+ verifyResult.innerHTML = '<span class="verify-bad">Belum ada data. Update data dulu.</span>';
+ return;
+ }
+ const hit = catalog.serialIndex[sn];
+ if (!hit){
+ verifyResult.innerHTML = '<span class="verify-bad">Serial number tidak ditemukan di data hari ini. Cek ulang input.</span>';
+ return;
+ }
+ const itemLine = `${escapeHtml(hit.desc)} <span style="color:var(--muted)">(${escapeHtml(hit.code)})</span>`;
+ if (hit.rank === 0){
+ verifyResult.innerHTML = `${itemLine}<br/><span class="verify-ok">✔ Sesuai urutan FIFO</span> — masuk ${escapeHtml(hit.admissionDate)}, di ${escapeHtml(hit.whcode)}.`;
+ } else {
+ verifyResult.innerHTML = `${itemLine}<br/><span class="verify-warn">⚠ Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}) — ambil itu dulu.`;
+ }
+}
+
+loadCatalog();
+}catch(e){ window.__showError(e.message); }
 </script>
 </body>
 </html>
