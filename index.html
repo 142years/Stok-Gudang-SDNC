@@ -157,15 +157,52 @@
  .verify-ok{color:var(--ready);font-weight:700;}
  .verify-warn{color:var(--indent);font-weight:700;}
  .verify-bad{color:var(--out);font-weight:700;}
- 
- /* SO Harian Styles */
- #soSection{
+
+ /* Tombol Buka Modal SO Harian */
+ #soLauncherSection{
  display:none;
+ padding:12px 16px;
+ border-bottom:1px solid var(--line);
+ background:var(--staff-bg);
+ }
+ #soLauncherSection.show{display:flex; justify-content:space-between; align-items:center;}
+ 
+ /* Modal SO Harian Pop-up */
+ #soModalOverlay{
+ display:none;
+ position:fixed;
+ inset:0;
+ background:rgba(10,11,15,0.8);
+ z-index:100;
+ align-items:center;
+ justify-content:center;
+ padding:16px;
+ }
+ #soModalOverlay.show{display:flex;}
+ #soModalBox{
+ background:var(--panel);
+ border:1px solid var(--line);
+ border-radius:12px;
+ width:100%;
+ max-width:600px;
+ max-height:90vh;
+ display:flex;
+ flex-direction:column;
+ overflow:hidden;
+ }
+ #soModalHeader{
  padding:14px 16px;
  border-bottom:1px solid var(--line);
- background:var(--panel);
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ background:var(--panel-2);
  }
- #soSection.show{display:block;}
+ #soModalBody{
+ padding:16px;
+ overflow-y:auto;
+ flex:1;
+ }
  .so-tab{
  flex:1;
  background:var(--panel-2);
@@ -186,7 +223,7 @@
  }
  .so-panel{display:none;}
  .so-panel.active{display:block;}
- 
+
  .search-wrap{
  position:sticky;
  top:0;
@@ -371,22 +408,32 @@
  </div>
  </div>
 
+ <!-- Tombol Akses Pop-up SO Harian -->
+ <div id="soLauncherSection">
+ <span style="font-size:13px; font-weight:600; color:var(--staff);">Tugas Stock Opname Harian</span>
+ <button id="openSoModalBtn" class="upload-btn" style="background:var(--staff-bg); color:var(--staff); border-color:var(--staff); font-size:12.5px; padding:6px 12px;">Buka Stock Opname Harian</button>
+ </div>
+
  <div id="verifySection">
- <div class="label">Verifikasi Serial Number (FIFO)</div>
+ <div class="label">Verifikasi Serial Number (FIFO) & Harga</div>
  <input type="text" id="verifyInput" placeholder="Scan / ketik serial number unit..." autocomplete="off" />
  <div id="verifyResult"></div>
  </div>
 
- <!-- Modul Stock Opname Harian SDNC -->
- <div id="soSection">
- <div class="so-title" style="font-size:13px; font-weight:700; color:var(--staff); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
- <span>Stock Opname Harian (SDNC)</span>
- <div style="display:flex; align-items:center; gap:8px;">
- <label class="upload-btn" style="font-size:11px; padding:4px 8px;" for="soFileInput">Upload File SO Excel</label>
+ <!-- Pop-up Modal Stock Opname Harian (SDNC) -->
+ <div id="soModalOverlay">
+ <div id="soModalBox">
+ <div id="soModalHeader">
+ <span style="font-size:14px; font-weight:700; color:var(--staff);">Stock Opname Harian (SDNC: HP, ACC, ITR Gantung)</span>
+ <button id="closeSoModalBtn" style="background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; font-weight:bold;">&times;</button>
+ </div>
+ <div id="soModalBody">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
+ <label class="upload-btn" style="font-size:11.5px; padding:6px 10px;" for="soFileInput">Upload File SO Excel</label>
  <input type="file" id="soFileInput" accept=".xlsx" style="display:none" />
- <span id="soSummaryInfo" style="font-size:11px; color:var(--muted);">Belum ada data SO</span>
+ <span id="soSummaryInfo" style="font-size:11.5px; color:var(--muted);">Belum ada data SO</span>
  </div>
- </div>
+ 
  <div class="so-tabs" style="display:flex; gap:6px; margin-bottom:12px;">
  <div class="so-tab active" data-target="soGadget">HP (Gadget)</div>
  <div class="so-tab" data-target="soAcc">Aksesoris (ACC)</div>
@@ -395,38 +442,38 @@
  
  <!-- Tab 1: Gadget -->
  <div id="soGadget" class="so-panel active">
- <div class="so-card" style="background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; font-size:12.5px;">
- <div class="so-card-row" style="display:flex; justify-content:space-between; margin-bottom:6px;">
- <strong>Checklist HP / Gadget</strong>
- <span id="soGadgetStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
- </div>
+ <div style="margin-bottom:8px;">
  <input type="text" id="soGadgetInput" placeholder="Cari deskripsi / IMEI HP..." autocomplete="off" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; font-family:ui-monospace,monospace; padding:8px 10px; border-radius:6px; outline:none;" />
  </div>
- <div id="soGadgetList" style="max-height:220px; overflow-y:auto; font-size:12px;"></div>
+ <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:6px;">
+ <span>Daftar Checklist HP</span>
+ <span id="soGadgetStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
+ </div>
+ <div id="soGadgetList" style="max-height:260px; overflow-y:auto; font-size:12px;"></div>
  </div>
 
  <!-- Tab 2: Aksesoris -->
  <div id="soAcc" class="so-panel">
- <div class="so-card" style="background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; font-size:12.5px;">
- <div class="so-card-row" style="display:flex; justify-content:space-between; margin-bottom:4px;">
- <strong>Rekonsiliasi Stok ACC</strong>
+ <div style="margin-bottom:8px;">
+ <input type="text" id="soAccInput" placeholder="Cari nama / kode aksesoris..." autocomplete="off" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; padding:8px 10px; border-radius:6px; outline:none;" />
+ </div>
+ <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:6px;">
+ <span>Rekonsiliasi Stok ACC</span>
  <span id="soAccStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
  </div>
- <input type="text" id="soAccInput" placeholder="Cari nama / kode aksesoris..." autocomplete="off" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; padding:6px 10px; border-radius:6px; outline:none; margin-top:6px;" />
- </div>
- <div id="soAccContainer" style="max-height:220px; overflow-y:auto;"></div>
+ <div id="soAccContainer" style="max-height:260px; overflow-y:auto;"></div>
  </div>
 
  <!-- Tab 3: ITR Gantung -->
  <div id="soItr" class="so-panel">
- <div class="so-card" style="background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; font-size:12.5px;">
- <div class="so-card-row" style="display:flex; justify-content:space-between; margin-bottom:4px;">
- <strong>Monitoring ITR Gantung</strong>
+ <div style="font-size:11.5px; color:var(--muted); margin-bottom:8px;">Monitoring dokumen ITR gantung dari hari sebelumnya.</div>
+ <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:6px;">
+ <span>Daftar Dokumen ITR</span>
  <span id="soItrStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
  </div>
- <div style="font-size:11px; color:var(--muted); margin-bottom:6px;">Daftar dokumen ITR gantung yang perlu diperiksa ulang.</div>
+ <div id="soItrContainer" style="max-height:260px; overflow-y:auto;"></div>
  </div>
- <div id="soItrContainer" style="max-height:220px; overflow-y:auto;"></div>
+ </div>
  </div>
  </div>
 
@@ -489,8 +536,11 @@ const verifySection = document.getElementById('verifySection');
 const verifyInput = document.getElementById('verifyInput');
 const verifyResult = document.getElementById('verifyResult');
 
-// SO Elements
-const soSection = document.getElementById('soSection');
+// SO Modal Elements
+const soLauncherSection = document.getElementById('soLauncherSection');
+const soModalOverlay = document.getElementById('soModalOverlay');
+const openSoModalBtn = document.getElementById('openSoModalBtn');
+const closeSoModalBtn = document.getElementById('closeSoModalBtn');
 const soFileInput = document.getElementById('soFileInput');
 const soSummaryInfo = document.getElementById('soSummaryInfo');
 const soGadgetInput = document.getElementById('soGadgetInput');
@@ -542,7 +592,7 @@ function enterStaffMode(){
  staffMode = true;
  uploadSection.classList.add('show');
  verifySection.classList.add('show');
- soSection.classList.add('show');
+ soLauncherSection.classList.add('show');
  staffToggle.classList.add('active');
  staffToggle.textContent = 'Keluar Mode Staff';
  closePinModal();
@@ -569,13 +619,26 @@ staffToggle.addEventListener('click', function(){
  staffMode = false;
  uploadSection.classList.remove('show');
  verifySection.classList.remove('show');
- soSection.classList.remove('show');
+ soLauncherSection.classList.remove('show');
+ soModalOverlay.classList.remove('show');
  staffToggle.classList.remove('active');
  staffToggle.textContent = 'Staff Gudang';
  doSearch();
  return;
  }
  openPinModal();
+});
+
+// Modal Pop-up Handlers
+openSoModalBtn.addEventListener('click', function(){
+ soModalOverlay.classList.add('show');
+ renderSoModules();
+});
+closeSoModalBtn.addEventListener('click', function(){
+ soModalOverlay.classList.remove('show');
+});
+soModalOverlay.addEventListener('click', function(e){
+ if (e.target === soModalOverlay) soModalOverlay.classList.remove('show');
 });
 
 document.querySelectorAll('.so-tab').forEach(tab => {
@@ -687,6 +750,7 @@ function buildCatalog(plRows, snRows, fileName){
  serialIndex[u.serial] = {
  code,
  desc: snDesc[code] || (plMap[code] ? plMap[code].desc : ''),
+ price: plMap[code] ? plMap[code].price : null,
  admissionDate: u.admissionDate,
  whcode: u.whcode,
  rank: idx,
@@ -718,12 +782,10 @@ function saveCatalog(cat){
  try { localStorage.setItem('inventory:latest', JSON.stringify(cat)); } catch(e) {}
 }
 
-// Parser Khusus Struktur Sheet SDNC untuk SO Harian (GADGET, ACC, ITR GANTUNG)
 function parseSoSdncSheet(rows, fileName){
  const hpList = [];
  const accList = [];
  const itrList = [];
-
  let currentSection = null;
  let idCounter = 1;
 
@@ -743,44 +805,22 @@ function parseSoSdncSheet(rows, fileName){
  continue;
  }
 
- // Lewati baris header tabel
  if (textVal === 'WAREHOUSE CODE' || textVal === 'NO ITR' || textVal === 'TANGGAL' || textVal === '') {
  continue;
  }
 
  if (currentSection === 'HP' && r[1] && r[2]) {
- hpList.push({
- id: idCounter++,
- whcode: String(r[0] || '').trim(),
- code: String(r[1] || '').trim(),
- desc: String(r[2] || '').trim(),
- detail: String(r[3] || '').trim(), // IMEI
- checked: false
- });
+ hpList.push({ id: idCounter++, whcode: String(r[0]||'').trim(), code: String(r[1]||'').trim(), desc: String(r[2]||'').trim(), detail: String(r[3]||'').trim(), checked: false });
  } else if (currentSection === 'ACC' && r[1] && r[2]) {
- accList.push({
- id: idCounter++,
- whcode: String(r[0] || '').trim(),
- code: String(r[1] || '').trim(),
- desc: String(r[2] || '').trim(),
- detail: String(r[3] || '').trim(), // Group Name
- checked: false
- });
+ accList.push({ id: idCounter++, whcode: String(r[0]||'').trim(), code: String(r[1]||'').trim(), desc: String(r[2]||'').trim(), detail: String(r[3]||'').trim(), checked: false });
  } else if (currentSection === 'ITR' && r[0] && r[0] !== 'No ITR') {
- itrList.push({
- id: idCounter++,
- code: String(r[0] || '').trim(), // No ITR
- desc: String(r[2] || '').trim(), // Cabang Asal -> Tujuan
- detail: 'Ekspedisi: ' + String(r[10] || '-') + ' | Resi: ' + String(r[9] || '-'),
- checked: false
- });
+ itrList.push({ id: idCounter++, code: String(r[0]||'').trim(), desc: String(r[2]||'').trim(), detail: 'Ekspedisi: ' + String(r[10]||'-') + ' | Resi: ' + String(r[9]||'-'), checked: false });
  }
  }
-
  return { fileName, hp: hpList, acc: accList, itr: itrList, updatedAt: new Date().toISOString() };
 }
 
-document.getElementById('soFileInput').addEventListener('change', function(e){
+soFileInput.addEventListener('change', function(e){
  const file = e.target.files[0];
  if (!file) return;
  ensureXlsxLoaded().then(() => {
@@ -789,12 +829,9 @@ document.getElementById('soFileInput').addEventListener('change', function(e){
  try{
  const data = new Uint8Array(evt.target.result);
  const wb = XLSX.read(data, {type:'array'});
- 
- // Cari sheet 'SDNC' secara otomatis
  let targetSheetName = wb.SheetNames.find(n => n.toUpperCase().includes('SDNC')) || wb.SheetNames[0];
  const sheet = wb.Sheets[targetSheetName];
  const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:null});
- 
  soData = parseSoSdncSheet(rows, file.name);
  localStorage.setItem('so:latest', JSON.stringify(soData));
  renderSoModules();
@@ -818,17 +855,15 @@ function renderSoModules(){
 
  soSummaryInfo.textContent = `${soData.fileName}`;
 
- // Render HP
  const hpFiltered = soData.hp.filter(item => {
  const q = soGadgetInput.value.toLowerCase();
  return !q || item.desc.toLowerCase().includes(q) || item.code.toLowerCase().includes(q) || item.detail.toLowerCase().includes(q);
  });
- const hpCheckedCount = soData.hp.filter(i => i.checked).length;
- soGadgetStats.textContent = `${hpCheckedCount} / ${soData.hp.length} Selesai`;
+ soGadgetStats.textContent = `${soData.hp.filter(i => i.checked).length} / ${soData.hp.length} Selesai`;
 
  soGadgetList.innerHTML = hpFiltered.length === 0 ? '<div style="color:var(--muted); padding:8px;">Tidak ditemukan.</div>' :
  hpFiltered.map(item => `
- <div style="display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px;">
+ <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px;">
  <div>
  <div style="font-weight:600; color:var(--text);">${escapeHtml(item.desc)}</div>
  <div style="color:var(--muted); font-size:11px;">IMEI: ${escapeHtml(item.detail)} · ${escapeHtml(item.whcode)}</div>
@@ -839,17 +874,15 @@ function renderSoModules(){
  </div>
  `).join('');
 
- // Render ACC
  const accFiltered = soData.acc.filter(item => {
  const q = soAccInput.value.toLowerCase();
  return !q || item.desc.toLowerCase().includes(q) || item.code.toLowerCase().includes(q);
  });
- const accCheckedCount = soData.acc.filter(i => i.checked).length;
- soAccStats.textContent = `${accCheckedCount} / ${soData.acc.length} Selesai`;
+ soAccStats.textContent = `${soData.acc.filter(i => i.checked).length} / ${soData.acc.length} Selesai`;
 
  soAccContainer.innerHTML = accFiltered.length === 0 ? '<div style="color:var(--muted); padding:8px;">Tidak ada data aksesoris.</div>' :
  accFiltered.map(item => `
- <div style="display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+ <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
  <div>
  <div style="font-weight:600; color:var(--text);">${escapeHtml(item.desc)}</div>
  <div style="color:var(--muted); font-size:11px;">Kode: ${escapeHtml(item.code)} · ${escapeHtml(item.whcode)}</div>
@@ -860,19 +893,16 @@ function renderSoModules(){
  </div>
  `).join('');
 
- // Render ITR
- const itrCheckedCount = soData.itr.filter(i => i.checked).length;
- soItrStats.textContent = `${itrCheckedCount} / ${soData.itr.length} Selesai`;
-
+ soItrStats.textContent = `${soData.itr.filter(i => i.checked).length} / ${soData.itr.length} Selesai`;
  soItrContainer.innerHTML = soData.itr.length === 0 ? '<div style="color:var(--muted); padding:8px;">Tidak ada data ITR gantung.</div>' :
  soData.itr.map(item => `
- <div style="display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+ <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
  <div>
  <div style="font-weight:600; color:var(--text);">No. ITR: ${escapeHtml(item.code)}</div>
  <div style="color:var(--muted); font-size:11px;">${escapeHtml(item.detail)}</div>
  </div>
  <button onclick="toggleSoItem('itr', ${item.id})" style="background:${item.checked ? 'var(--ready-bg)' : 'var(--panel-2)'}; color:${item.checked ? 'var(--ready)' : 'var(--text)'}; border:1px solid ${item.checked ? 'var(--ready)' : 'var(--line)'}; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700;">
- ${item.checked ? '✔ Selesai' : 'Pending'}
+ ${item.checked ? '✔ Sesuai' : 'Pending'}
  </button>
  </div>
  `).join('');
@@ -1063,10 +1093,12 @@ function doVerify(){
  return;
  }
  const itemLine = `${escapeHtml(hit.desc)} <span style="color:var(--muted)">(${escapeHtml(hit.code)})</span>`;
+ const priceDisplay = `Harga: <b style="color:var(--text);">${fmtRupiah(hit.price)}</b>`;
+
  if (hit.rank === 0){
- verifyResult.innerHTML = `${itemLine}<br/><span class="verify-ok">✔ Sesuai urutan FIFO</span> — masuk ${escapeHtml(hit.admissionDate)}, di ${escapeHtml(hit.whcode)}.`;
+ verifyResult.innerHTML = `${itemLine}<br/>${priceDisplay}<br/><span class="verify-ok">✔ Sesuai urutan FIFO</span> — masuk ${escapeHtml(hit.admissionDate)}, di ${escapeHtml(hit.whcode)}.`;
  } else {
- verifyResult.innerHTML = `${itemLine}<br/><span class="verify-warn">⚠ Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}) — ambil itu dulu.`;
+ verifyResult.innerHTML = `${itemLine}<br/>${priceDisplay}<br/><span class="verify-warn">⚠ Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}) — ambil itu dulu.`;
  }
 }
 
