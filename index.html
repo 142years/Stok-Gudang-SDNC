@@ -270,12 +270,6 @@
  <button class="sync-btn" id="forceSyncBtn">Muat Ulang Data</button>
  </div>
 
- <div id="verifySection">
- <div class="label">Verifikasi Serial Number & Harga</div>
- <input type="text" id="verifyInput" placeholder="Scan / ketik serial number unit..." autocomplete="off" />
- <div id="verifyResult"></div>
- </div>
-
  <div class="search-wrap">
  <input type="text" id="searchInput" placeholder="Ketik nama atau kode barang..." autocomplete="off" />
  </div>
@@ -308,9 +302,6 @@ const resultsEl = document.getElementById('results');
 const metaDetail = document.getElementById('metaDetail');
 const metaFile = document.getElementById('metaFile');
 const syncSection = document.getElementById('syncSection');
-const verifySection = document.getElementById('verifySection');
-const verifyInput = document.getElementById('verifyInput');
-const verifyResult = document.getElementById('verifyResult');
 const staffToggle = document.getElementById('staffToggle');
 const searchInput = document.getElementById('searchInput');
 const footNote = document.getElementById('footNote');
@@ -325,7 +316,6 @@ function fmtRupiah(n){
  return 'Rp' + Math.round(n).toLocaleString('id-ID');
 }
 
-// Fetch data disesuaikan dengan kolom persis dari file Google Sheets Anda
 async function fetchCloudData(){
  metaDetail.textContent = 'Menghubungkan ke Google Sheets...';
  try {
@@ -334,14 +324,12 @@ async function fetchCloudData(){
    const rawData = await response.json();
    
    catalogItems = rawData.map(row => {
-     // Mengambil nama kolom persis sesuai CSV/Google Sheets Anda:
-     // 'Item No.', 'Item Description', ' List Price', 'Available'
      let desc = row['Item Description'] || row['Description'] || '';
      let code = row['Item No.'] || row['Item Code'] || '';
      
-     // Membersihkan spasi pada key List Price jika ada
-     let rawPrice = row[' List Price'] !== undefined ? row[' List Price'] : row['List Price'];
-     let price = Number(rawPrice) || 0;
+     // Menangani spasi pada kolom ' List Price' dari Google Sheets
+     let rawPrice = row[' List Price'] !== undefined ? row[' List Price'] : (row['List Price'] !== undefined ? row['List Price'] : 0);
+     let price = Number(String(rawPrice).replace(/[^0-9.-]+/g,"")) || 0;
      let available = Number(row['Available']) || 0;
 
      return {
@@ -370,7 +358,6 @@ staffToggle.addEventListener('click', function(){
  if (staffMode){
    staffMode = false;
    syncSection.classList.remove('show');
-   verifySection.classList.remove('show');
    staffToggle.classList.remove('active');
    staffToggle.textContent = 'Staff Gudang';
    doSearch();
@@ -386,7 +373,6 @@ pinSubmit.addEventListener('click', function(){
  if (pinInput.value === STAFF_PIN){
    staffMode = true;
    syncSection.classList.add('show');
-   verifySection.classList.add('show');
    staffToggle.classList.add('active');
    staffToggle.textContent = 'Keluar Mode Staff';
    pinOverlay.classList.remove('show');
@@ -439,9 +425,7 @@ function doSearch(){
  footNote.textContent = `${matches.length} hasil ditemukan.`;
 }
 
-// Inisialisasi awal
 fetchCloudData();
-
 })();
 </script>
 </body>
