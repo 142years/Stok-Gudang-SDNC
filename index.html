@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Cek Harga & Stok</title>
+<!-- Pustaka Supabase Client untuk sinkronisasi cloud -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
  :root{
  --bg:#181B22;
@@ -389,7 +391,7 @@
  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
  <span id="metaFileName"></span>
  </div>
- <div id="metaDetail">Belum ada data</div>
+ <div id="metaDetail">Memuat data dari server...</div>
  </div>
  </div>
  <button id="staffToggle">Staff Gudang</button>
@@ -513,6 +515,11 @@
 })();
 
 try{
+// Konfigurasi Supabase (Ganti dengan URL & Anon Key dari Project Supabase Anda)
+const SUPABASE_URL = 'https://mzgieucddbplyjsbklep.supabase.co/rest/v1/';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16Z2lldWNkZGJwbHlqc2JrbGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzA4OTQsImV4cCI6MjEwNTY0Njg5NH0.Gw4UWJLaIr7_FPaJbbpXoSW9jQBfB4mAG1aMZ5BKFyo';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const STAFF_PIN = "2026";
 
 let catalog = null;
@@ -536,7 +543,6 @@ const verifySection = document.getElementById('verifySection');
 const verifyInput = document.getElementById('verifyInput');
 const verifyResult = document.getElementById('verifyResult');
 
-// SO Modal Elements
 const soLauncherSection = document.getElementById('soLauncherSection');
 const soModalOverlay = document.getElementById('soModalOverlay');
 const openSoModalBtn = document.getElementById('openSoModalBtn');
@@ -629,7 +635,6 @@ staffToggle.addEventListener('click', function(){
  openPinModal();
 });
 
-// Modal Pop-up Handlers
 openSoModalBtn.addEventListener('click', function(){
  soModalOverlay.classList.add('show');
  renderSoModules();
@@ -650,21 +655,55 @@ document.querySelectorAll('.so-tab').forEach(tab => {
  });
 });
 
+// Load data dari Supabase Cloud agar bisa diakses semua device
 async function loadCatalog(){
  try{
+ const { data: invData, error: invErr } = await supabase
+ .from('app_data')
+ .select('payload')
+ .eq('key', 'inventory:latest')
+ .single();
+ if (invData && invData.payload) catalog = invData.payload;
+
+ const { data: soDbData, error: soErr } = await supabase
+ .from('app_data')
+ .select('payload')
+ .eq('key', 'so:latest')
+ .single();
+ if (soDbData && soDbData.payload) soData = soDbData.payload;
+ }catch(e){
+ // Fallback ke localStorage jika offline
+ try {
  const res = localStorage.getItem('inventory:latest');
- if (res){ catalog = JSON.parse(res); }
+ if (res) catalog = JSON.parse(res);
  const soRes = localStorage.getItem('so:latest');
- if (soRes){ soData = JSON.parse(soRes); }
- }catch(e){}
+ if (soRes) soData = JSON.parse(soRes);
+ }catch(err){}
+ }
  renderMeta();
  renderEmpty();
  if (staffMode) renderSoModules();
 }
 
+async function saveCatalogToCloud(key, payloadData){
+ try {
+ // Simpan lokal dulu sebagai backup
+ localStorage.setItem(key, JSON.stringify(payloadData));
+
+ // Simpan ke Cloud Supabase (Upsert berdasarkan key)
+ const { error } = await supabase
+ .from('app_data')
+ .upsert({ key: key, payload: payloadData }, { onConflict: 'key' });
+
+ if (error) console.error('Gagal simpan ke cloud:', error.message);
+ } catch(e) {
+ console.error(e);
+ }
+}
+
 function renderMeta(){
  if (!catalog){
- metaDetail.textContent = 'Belum ada data';
+ metaDetail.textContent = 'Belum ada data tersimpan';
  metaFile.style.display = 'none';
  metaFileName.textContent = '';
  uploadFileInfo.style.display = 'none';
@@ -690,7 +729,7 @@ function renderMeta(){
 
 function renderEmpty(){
  if (!catalog){
- resultsEl.innerHTML = '<div class="empty">Belum ada data tersimpan.<br/>Staff gudang: masuk mode Staff lalu upload file Excel hari ini.</div>';
+ resultsEl.innerHTML = '<div class="empty">Belum ada data tersimpan di server.<br/>Staff gudang: masuk mode Staff lalu upload file Excel hari ini.</div>';
  } else {
  resultsEl.innerHTML = '<div class="empty">Ketik nama atau kode barang untuk mulai mencari.</div>';
  }
@@ -778,10 +817,6 @@ function buildCatalog(plRows, snRows, fileName){
  return { items, serialIndex, updatedAt: new Date().toISOString(), fileName };
 }
 
-function saveCatalog(cat){
- try { localStorage.setItem('inventory:latest', JSON.stringify(cat)); } catch(e) {}
-}
-
 function parseSoSdncSheet(rows, fileName){
  const hpList = [];
  const accList = [];
@@ -833,7 +868,7 @@ soFileInput.addEventListener('change', function(e){
  const sheet = wb.Sheets[targetSheetName];
  const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:null});
  soData = parseSoSdncSheet(rows, file.name);
- localStorage.setItem('so:latest', JSON.stringify(soData));
+ saveCatalogToCloud('so:latest', soData);
  renderSoModules();
  }catch(err){
  alert('Gagal membaca file SO SDNC: ' + err.message);
@@ -915,7 +950,7 @@ window.toggleSoItem = function(category, id){
  const target = list.find(i => i.id === id);
  if (target){
  target.checked = !target.checked;
- localStorage.setItem('so:latest', JSON.stringify(soData));
+ saveCatalogToCloud('so:latest', soData);
  renderSoModules();
  }
 };
@@ -946,8 +981,11 @@ document.getElementById('fileInput').addEventListener('change', function(e){
  }).finally(() => { e.target.value = ''; });
 });
 
-document.getElementById('resetDataBtn').addEventListener('click', function(){
- if (confirm('Apakah Anda yakin ingin menghapus data stok & SO saat ini?')) {
+document.getElementById('resetDataBtn').addEventListener('click', async function(){
+ if (confirm('Apakah Anda yakin ingin menghapus data stok & SO di server?')) {
+ try {
+ await supabase.from('app_data').delete().in('key', ['inventory:latest', 'so:latest']);
+ } catch(e){}
  localStorage.removeItem('inventory:latest');
  localStorage.removeItem('so:latest');
  catalog = null;
@@ -955,7 +993,7 @@ document.getElementById('resetDataBtn').addEventListener('click', function(){
  renderMeta();
  renderEmpty();
  if(staffMode) renderSoModules();
- statusEl.textContent = 'Data berhasil dihapus.';
+ statusEl.textContent = 'Data berhasil dihapus dari server.';
  openFifo.clear();
  }
 });
@@ -987,9 +1025,9 @@ function readWorkbookFile(file){
  const plRows = XLSX.utils.sheet_to_json(plSheet, {header:1, defval:null});
  const snRows = XLSX.utils.sheet_to_json(snSheet, {header:1, defval:null});
  catalog = buildCatalog(plRows, snRows, file.name);
- saveCatalog(catalog);
+ saveCatalogToCloud('inventory:latest', catalog);
  renderMeta();
- statusEl.textContent = `Data berhasil diperbarui dari ${file.name}.`;
+ statusEl.textContent = `Data berhasil di-sync ke cloud dari ${file.name}.`;
  openFifo.clear();
  if (searchInput.value.trim()) doSearch(); else renderEmpty();
  }catch(err){
