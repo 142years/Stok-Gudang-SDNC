@@ -701,11 +701,11 @@ async function saveCatalogToCloud(key, payloadData){
  .from('app_data')
  .upsert({ key: key, payload: payloadData }, { onConflict: 'key' });
 
- if (error){ console.error('Gagal simpan ke cloud:', error.message); return false; }
- return true;
+ if (error){ console.error('Gagal simpan ke cloud:', error.message); return { ok:false, message: error.message }; }
+ return { ok:true, message:'' };
  } catch(e) {
  console.error(e);
- return false;
+ return { ok:false, message: e.message || String(e) };
  }
 }
 
@@ -1008,11 +1008,11 @@ async function tryBuildCatalogFromPending(){
  try{
  const combinedName = `${pendingPlName} + ${pendingSnName}`;
  catalog = buildCatalog(pendingPlRows, pendingSnRows, combinedName);
- const ok = await saveCatalogToCloud('inventory:latest', catalog);
+ const result = await saveCatalogToCloud('inventory:latest', catalog);
  renderMeta();
- statusEl.textContent = ok
+ statusEl.textContent = result.ok
  ? `Data berhasil disinkron ke cloud (${combinedName}) — semua pengguna link akan melihat data ini.`
- : `GAGAL sinkron ke cloud! Data cuma tersimpan di device ini, pengguna lain BELUM melihat update. Cek koneksi internet / pengaturan Supabase, lalu upload ulang.`;
+ : `GAGAL sinkron ke cloud: ${result.message} — Data cuma tersimpan di device ini.`;
  openFifo.clear();
  if (searchInput.value.trim()) doSearch(); else renderEmpty();
  }catch(err){
