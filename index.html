@@ -399,8 +399,10 @@
 
  <div id="uploadSection">
  <div class="upload-actions">
- <label class="upload-btn" for="fileInput">Update Data Stok Hari Ini</label>
- <input type="file" id="fileInput" accept=".xlsx" style="display:none" />
+ <label class="upload-btn" for="plFileInput">Upload Stock/Price List</label>
+ <input type="file" id="plFileInput" accept=".xlsx" style="display:none" />
+ <label class="upload-btn" for="snFileInput">Upload Serial Number</label>
+ <input type="file" id="snFileInput" accept=".xlsx" style="display:none" />
  <button id="resetDataBtn" class="upload-btn" style="background:var(--out-bg); color:var(--out); border-color:var(--out);">Hapus Data</button>
  <span id="uploadStatus"></span>
  </div>
@@ -542,6 +544,10 @@ const uploadSection = document.getElementById('uploadSection');
 const verifySection = document.getElementById('verifySection');
 const verifyInput = document.getElementById('verifyInput');
 const verifyResult = document.getElementById('verifyResult');
+const plFileInput = document.getElementById('plFileInput');
+const snFileInput = document.getElementById('snFileInput');
+let pendingPlRows = null, pendingPlName = null;
+let pendingSnRows = null, pendingSnName = null;
 
 const soLauncherSection = document.getElementById('soLauncherSection');
 const soModalOverlay = document.getElementById('soModalOverlay');
@@ -686,18 +692,20 @@ async function loadCatalog(){
 }
 
 async function saveCatalogToCloud(key, payloadData){
- try {
  // Simpan lokal dulu sebagai backup
- localStorage.setItem(key, JSON.stringify(payloadData));
+ try { localStorage.setItem(key, JSON.stringify(payloadData)); } catch(e){}
 
- // Simpan ke Cloud Supabase (Upsert berdasarkan key)
+ try {
+ // Simpan ke Cloud Supabase (Upsert berdasarkan key) — ini yang membuat semua pengguna link melihat data yang sama
  const { error } = await supabase
  .from('app_data')
  .upsert({ key: key, payload: payloadData }, { onConflict: 'key' });
 
- if (error) console.error('Gagal simpan ke cloud:', error.message);
+ if (error){ console.error('Gagal simpan ke cloud:', error.message); return false; }
+ return true;
  } catch(e) {
  console.error(e);
+ return false;
  }
 }
 
@@ -745,10 +753,12 @@ function buildCatalog(plRows, snRows, fileName){
  const desc = r[2] ? String(r[2]).trim() : '';
  const whcode = r[3] ? String(r[3]).trim() : '';
  const available = Number(r[5]) || 0;
+ const allocated = Number(r[6]) || 0;
  const instock = Number(r[7]) || 0;
  const price = Number(r[8]) || 0;
- if (!plMap[itemNo]) plMap[itemNo] = {desc:'', price:0, totalAvailable:0, totalInStock:0, locations:[]};
+ if (!plMap[itemNo]) plMap[itemNo] = {desc:'', price:0, totalAvailable:0, totalAllocated:0, totalInStock:0, locations:[]};
  plMap[itemNo].totalAvailable += available;
+ plMap[itemNo].totalAllocated += allocated;
  plMap[itemNo].totalInStock += instock;
  plMap[itemNo].locations.push({whcode, available, instock});
  if (desc) plMap[itemNo].desc = desc;
@@ -769,13 +779,15 @@ function buildCatalog(plRows, snRows, fileName){
  const status = r[7] ? String(r[7]).trim() : '';
  if (desc && !snDesc[itemCode]) snDesc[itemCode] = desc;
 
- if (status === 'Available' && whcode){
+ if (whcode && (status === 'Available' || status === 'Allocated')){
  if (whcode.startsWith('SDN')){
+ // Gudang sendiri: Allocated tetap ditampilkan (fisik masih bisa ada, alokasi bisa di-cancel untuk dijual)
  if (serial && admDate){
  if (!ownUnitsMap[itemCode]) ownUnitsMap[itemCode] = [];
- ownUnitsMap[itemCode].push({ serial, whcode, admissionDate: admDate.display, ts: admDate.ts });
+ ownUnitsMap[itemCode].push({ serial, whcode, admissionDate: admDate.display, ts: admDate.ts, status });
  }
- } else {
+ } else if (status === 'Available'){
+ // Cabang lain: hanya yang benar-benar Available dihitung untuk info indent
  if (!snMap[itemCode]) snMap[itemCode] = {};
  snMap[itemCode][whcode] = (snMap[itemCode][whcode] || 0) + 1;
  }
@@ -792,6 +804,7 @@ function buildCatalog(plRows, snRows, fileName){
  price: plMap[code] ? plMap[code].price : null,
  admissionDate: u.admissionDate,
  whcode: u.whcode,
+ status: u.status,
  rank: idx,
  oldestSerial: ownUnitsMap[code][0].serial,
  oldestDate: ownUnitsMap[code][0].admissionDate
@@ -808,6 +821,7 @@ function buildCatalog(plRows, snRows, fileName){
  desc: (pl && pl.desc) || snDesc[code] || '(tanpa nama)',
  price: pl ? pl.price : null,
  available: pl ? pl.totalAvailable : 0,
+ allocatedOwn: pl ? pl.totalAllocated : 0,
  others: snMap[code] || null,
  ownUnits: ownUnitsMap[code] || null,
  inOwnList: !!pl
@@ -972,13 +986,72 @@ function ensureXlsxLoaded(){
  return xlsxLoadPromise;
 }
 
-document.getElementById('fileInput').addEventListener('change', function(e){
+function readSheetFile(file){
+ return new Promise((resolve, reject) => {
+ const reader = new FileReader();
+ reader.onload = function(evt){
+ try{
+ const data = new Uint8Array(evt.target.result);
+ const wb = XLSX.read(data, {type:'array'});
+ const sheet = wb.Sheets[wb.SheetNames[0]];
+ const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:null});
+ resolve(rows);
+ }catch(err){ reject(err); }
+ };
+ reader.onerror = function(){ reject(new Error('Gagal membaca file.')); };
+ reader.readAsArrayBuffer(file);
+ });
+}
+
+async function tryBuildCatalogFromPending(){
+ if (!pendingPlRows || !pendingSnRows) return;
+ try{
+ const combinedName = `${pendingPlName} + ${pendingSnName}`;
+ catalog = buildCatalog(pendingPlRows, pendingSnRows, combinedName);
+ const ok = await saveCatalogToCloud('inventory:latest', catalog);
+ renderMeta();
+ statusEl.textContent = ok
+ ? `Data berhasil disinkron ke cloud (${combinedName}) — semua pengguna link akan melihat data ini.`
+ : `GAGAL sinkron ke cloud! Data cuma tersimpan di device ini, pengguna lain BELUM melihat update. Cek koneksi internet / pengaturan Supabase, lalu upload ulang.`;
+ openFifo.clear();
+ if (searchInput.value.trim()) doSearch(); else renderEmpty();
+ }catch(err){
+ statusEl.textContent = 'Gagal memproses data: ' + err.message;
+ } finally {
+ pendingPlRows = null; pendingSnRows = null; pendingPlName = null; pendingSnName = null;
+ }
+}
+
+plFileInput.addEventListener('change', function(e){
  const file = e.target.files[0];
  if (!file) return;
- statusEl.textContent = `Memuat pustaka pembaca Excel (${file.name})...`;
- ensureXlsxLoaded().then(() => readWorkbookFile(file)).catch(err => {
- statusEl.textContent = err.message;
- }).finally(() => { e.target.value = ''; });
+ statusEl.textContent = `Membaca file Stock/Price List (${file.name})...`;
+ ensureXlsxLoaded()
+ .then(() => readSheetFile(file))
+ .then(rows => {
+ pendingPlRows = rows;
+ pendingPlName = file.name;
+ statusEl.textContent = pendingSnRows ? 'File PL siap, menggabungkan dengan file SN...' : `File PL "${file.name}" siap. Menunggu file Serial Number...`;
+ tryBuildCatalogFromPending();
+ })
+ .catch(err => { statusEl.textContent = 'Gagal membaca file PL: ' + err.message; })
+ .finally(() => { e.target.value = ''; });
+});
+
+snFileInput.addEventListener('change', function(e){
+ const file = e.target.files[0];
+ if (!file) return;
+ statusEl.textContent = `Membaca file Serial Number (${file.name})...`;
+ ensureXlsxLoaded()
+ .then(() => readSheetFile(file))
+ .then(rows => {
+ pendingSnRows = rows;
+ pendingSnName = file.name;
+ statusEl.textContent = pendingPlRows ? 'File SN siap, menggabungkan dengan file PL...' : `File SN "${file.name}" siap. Menunggu file Stock/Price List...`;
+ tryBuildCatalogFromPending();
+ })
+ .catch(err => { statusEl.textContent = 'Gagal membaca file SN: ' + err.message; })
+ .finally(() => { e.target.value = ''; });
 });
 
 document.getElementById('resetDataBtn').addEventListener('click', async function(){
@@ -990,6 +1063,7 @@ document.getElementById('resetDataBtn').addEventListener('click', async function
  localStorage.removeItem('so:latest');
  catalog = null;
  soData = null;
+ pendingPlRows = null; pendingSnRows = null; pendingPlName = null; pendingSnName = null;
  renderMeta();
  renderEmpty();
  if(staffMode) renderSoModules();
@@ -997,46 +1071,6 @@ document.getElementById('resetDataBtn').addEventListener('click', async function
  openFifo.clear();
  }
 });
-
-function readWorkbookFile(file){
- statusEl.textContent = `Membaca file ${file.name}...`;
- const reader = new FileReader();
- reader.onload = function(evt){
- try{
- const data = new Uint8Array(evt.target.result);
- const wb = XLSX.read(data, {type:'array'});
- let plSheetName = null;
- let snSheetName = null;
-
- wb.SheetNames.forEach(name => {
- const upper = name.toUpperCase();
- if (upper.includes('PL') || upper.includes('PRICE')) plSheetName = name;
- if (upper.includes('SN') || upper.includes('SERIAL') || upper.includes('STOCK')) snSheetName = name;
- });
-
- const sheetList = wb.SheetNames;
- const plSheet = wb.Sheets[plSheetName] || wb.Sheets[sheetList[0]];
- const snSheet = wb.Sheets[snSheetName] || wb.Sheets[sheetList[1]];
-
- if (!plSheet || !snSheet){
- statusEl.textContent = 'File tidak sesuai — pastikan ada sheet untuk Price List (PL) dan Serial Number (SN).';
- return;
- }
- const plRows = XLSX.utils.sheet_to_json(plSheet, {header:1, defval:null});
- const snRows = XLSX.utils.sheet_to_json(snSheet, {header:1, defval:null});
- catalog = buildCatalog(plRows, snRows, file.name);
- saveCatalogToCloud('inventory:latest', catalog);
- renderMeta();
- statusEl.textContent = `Data berhasil di-sync ke cloud dari ${file.name}.`;
- openFifo.clear();
- if (searchInput.value.trim()) doSearch(); else renderEmpty();
- }catch(err){
- statusEl.textContent = 'Gagal membaca file: ' + err.message;
- }
- };
- reader.onerror = function(){ statusEl.textContent = 'Gagal membaca file.'; };
- reader.readAsArrayBuffer(file);
-}
 
 function renderFifoList(it){
  if (!staffMode || !it.ownUnits || it.ownUnits.length === 0) return '';
@@ -1046,7 +1080,7 @@ function renderFifoList(it){
  if (isOpen){
  listHtml = '<div class="fifo-list">' + it.ownUnits.map((u, idx) => `
  <div class="fifo-row${idx === 0 ? ' first' : ''}">
- <span>${idx === 0 ? '➜ ' : ''}${escapeHtml(u.serial)}</span>
+ <span>${idx === 0 ? '➜ ' : ''}${escapeHtml(u.serial)}${u.status === 'Allocated' ? ' <span style="color:var(--indent);font-weight:700;">(Allocated)</span>' : ''}</span>
  <span>${escapeHtml(u.admissionDate)} · ${escapeHtml(u.whcode)}</span>
  </div>
  `).join('') + '</div>';
@@ -1057,8 +1091,9 @@ function renderFifoList(it){
 function renderItem(it){
  const priceStr = fmtRupiah(it.price);
  let statusHtml;
- if (it.available > 0){
- statusHtml = `<span class="badge ready">READY · ${it.available} pcs</span>`;
+ const readyCount = (it.available || 0) + (it.allocatedOwn || 0);
+ if (readyCount > 0){
+ statusHtml = `<span class="badge ready">READY · ${readyCount} pcs</span>`;
  } else if (it.others){
  const sorted = Object.entries(it.others).sort((a,b) => b[1]-a[1]).slice(0,5);
  const total = Object.values(it.others).reduce((a,b) => a+b, 0);
@@ -1133,14 +1168,38 @@ function doVerify(){
  const itemLine = `${escapeHtml(hit.desc)} <span style="color:var(--muted)">(${escapeHtml(hit.code)})</span>`;
  const priceDisplay = `Harga: <b style="color:var(--text);">${fmtRupiah(hit.price)}</b>`;
 
+ const allocWarn = hit.status === 'Allocated' ? '<br/><span class="verify-warn">⚠ Status: Allocated — minta cancel alokasi di sistem SAP dulu sebelum dijual ke customer.</span>' : '';
  if (hit.rank === 0){
- verifyResult.innerHTML = `${itemLine}<br/>${priceDisplay}<br/><span class="verify-ok">✔ Sesuai urutan FIFO</span> — masuk ${escapeHtml(hit.admissionDate)}, di ${escapeHtml(hit.whcode)}.`;
+ verifyResult.innerHTML = `${itemLine}<br/>${priceDisplay}<br/><span class="verify-ok">✔ Sesuai urutan FIFO</span> — masuk ${escapeHtml(hit.admissionDate)}, di ${escapeHtml(hit.whcode)}.${allocWarn}`;
  } else {
- verifyResult.innerHTML = `${itemLine}<br/>${priceDisplay}<br/><span class="verify-warn">⚠ Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}) — ambil itu dulu.`;
+ verifyResult.innerHTML = `${itemLine}<br/>${priceDisplay}<br/><span class="verify-warn">⚠ Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}) — ambil itu dulu.${allocWarn}`;
  }
 }
 
 loadCatalog();
+
+// Cek pembaruan dari pengguna lain secara berkala, agar sesi yang sudah terbuka
+// ikut ter-update tanpa perlu reload manual saat ada yang upload data baru.
+setInterval(async function(){
+ try{
+ const { data: invData } = await supabase
+ .from('app_data').select('payload').eq('key', 'inventory:latest').single();
+ if (invData && invData.payload && (!catalog || invData.payload.updatedAt !== catalog.updatedAt)){
+ catalog = invData.payload;
+ renderMeta();
+ if (searchInput.value.trim()) doSearch(); else renderEmpty();
+ }
+ }catch(e){}
+
+ try{
+ const { data: soDbData } = await supabase
+ .from('app_data').select('payload').eq('key', 'so:latest').single();
+ if (soDbData && soDbData.payload && (!soData || soDbData.payload.updatedAt !== soData.updatedAt)){
+ soData = soDbData.payload;
+ if (staffMode) renderSoModules();
+ }
+ }catch(e){}
+}, 20000);
 }catch(e){ window.__showError(e.message); }
 </script>
 </body>
