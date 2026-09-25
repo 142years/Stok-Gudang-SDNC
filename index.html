@@ -573,7 +573,7 @@
  </div>
 
  <div class="search-wrap">
- <input type="text" id="searchInput" placeholder="Ketik nama atau kode barang..." autocomplete="off" />
+ <input type="text" id="searchInput" placeholder="Ketik nama, kode, no. SN, atau barcode..." autocomplete="off" />
  </div>
  <div id="results"></div>
  <div class="note" id="footNote"></div>
@@ -1348,13 +1348,27 @@ searchInput.addEventListener('input', function(){
  searchTimer = setTimeout(doSearch, 120);
 });
 
+function getItemSearchHay(it){
+ if (it.__hay) return it.__hay;
+ let hay = (it.desc + ' ' + it.code).toLowerCase();
+ if (it.ownUnits && it.ownUnits.length){
+ hay += ' ' + it.ownUnits.map(u => u.serial).join(' ').toLowerCase();
+ }
+ const codes = getBarcodes(it.desc);
+ if (codes && codes.length){
+ hay += ' ' + codes.join(' ').toLowerCase();
+ }
+ it.__hay = hay;
+ return hay;
+}
+
 function doSearch(){
  const q = searchInput.value.trim().toLowerCase();
  if (!catalog){ renderEmpty(); return; }
  if (!q){ renderEmpty(); return; }
  const words = q.split(/\s+/).filter(Boolean);
  const matches = catalog.items.filter(it => {
- const hay = (it.desc + ' ' + it.code).toLowerCase();
+ const hay = getItemSearchHay(it);
  return words.every(w => hay.includes(w));
  });
  if (matches.length === 0){
