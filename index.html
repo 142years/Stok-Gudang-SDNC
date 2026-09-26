@@ -1001,7 +1001,15 @@ function parseSoSdncSheet(rows, fileName){
  if (currentSection === 'HP' && r[1] && r[2]) {
  hpList.push({ id: idCounter++, whcode: String(r[0]||'').trim(), code: String(r[1]||'').trim(), desc: String(r[2]||'').trim(), detail: String(r[3]||'').trim(), checked: false });
  } else if (currentSection === 'ACC' && r[1] && r[2]) {
- accList.push({ id: idCounter++, whcode: String(r[0]||'').trim(), code: String(r[1]||'').trim(), desc: String(r[2]||'').trim(), detail: String(r[3]||'').trim(), checked: false });
+ accList.push({
+ id: idCounter++,
+ whcode: String(r[0]||'').trim(),
+ code: String(r[1]||'').trim(),
+ desc: String(r[2]||'').trim(),
+ detail: String(r[3]||'').trim(),
+ sapQty: Number(r[4]) || 0,
+ checked: false
+ });
  } else if (currentSection === 'ITR' && r[0] && r[0] !== 'No ITR') {
  itrList.push({ id: idCounter++, code: String(r[0]||'').trim(), desc: String(r[2]||'').trim(), detail: 'Ekspedisi: ' + String(r[10]||'-') + ' | Resi: ' + String(r[9]||'-'), checked: false });
  }
@@ -1073,8 +1081,8 @@ function renderSoModules(){
  accFiltered.map(item => `
  <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
  <div>
- <div style="font-weight:600; color:var(--text);">${escapeHtml(item.desc)}</div>
- <div style="color:var(--muted); font-size:11px;">Kode: ${escapeHtml(item.code)} · ${escapeHtml(item.whcode)}</div>
+ <div style="font-weight:600; color:var(--text);">${escapeHtml(item.desc)}${item.sapQty > 1 ? ` <span style="color:var(--indent); font-weight:800;">· SAP: ${item.sapQty} pcs</span>` : ''}</div>
+ <div style="color:var(--muted); font-size:11px;">Kode: ${escapeHtml(item.code)} · ${escapeHtml(item.whcode)}${item.sapQty ? ` · Jumlah SAP: ${item.sapQty}` : ''}</div>
  </div>
  <button onclick="toggleSoItem('acc', ${item.id})" style="background:${item.checked ? 'var(--ready-bg)' : 'var(--panel-2)'}; color:${item.checked ? 'var(--ready)' : 'var(--text)'}; border:1px solid ${item.checked ? 'var(--ready)' : 'var(--line)'}; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700;">
  ${item.checked ? '✔ Sesuai' : 'Cek'}
