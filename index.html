@@ -493,12 +493,21 @@
  <input type="file" id="snFileInput" accept=".xlsx" style="display:none" />
  <span id="snCheckBadge" class="upload-check"></span>
  </div>
+ <div class="upload-slot">
+ <label class="upload-btn" for="stockAvailFileInput">Upload Stock Available (Cabang Lain)</label>
+ <input type="file" id="stockAvailFileInput" accept=".xlsx" style="display:none" />
+ <span id="stockAvailCheckBadge" class="upload-check"></span>
+ </div>
  <button id="resetDataBtn" class="upload-btn" style="background:var(--out-bg); color:var(--out); border-color:var(--out);">Hapus Data</button>
  <span id="uploadStatus"></span>
  </div>
  <div id="uploadFileInfo" class="file-info-badge" style="display:none;">
  <span class="file-label">File saat ini:</span>
  <span class="file-name" id="currentFileName"></span>
+ </div>
+ <div id="stockAvailInfo" class="file-info-badge" style="display:none;">
+ <span class="file-label">Data cabang lain (Stock Available):</span>
+ <span class="file-name" id="stockAvailFileName"></span>
  </div>
  </div>
 
@@ -667,6 +676,10 @@ const plFileInput = document.getElementById('plFileInput');
 const snFileInput = document.getElementById('snFileInput');
 const plCheckBadge = document.getElementById('plCheckBadge');
 const snCheckBadge = document.getElementById('snCheckBadge');
+const stockAvailFileInput = document.getElementById('stockAvailFileInput');
+const stockAvailCheckBadge = document.getElementById('stockAvailCheckBadge');
+const stockAvailInfo = document.getElementById('stockAvailInfo');
+const stockAvailFileName = document.getElementById('stockAvailFileName');
 
 function setCheckBadge(el, state, text){
  el.className = 'upload-check show ' + state; // state: 'ok' | 'bad' | 'loading'
@@ -674,6 +687,15 @@ function setCheckBadge(el, state, text){
 }
 let pendingPlRows = null, pendingPlName = null;
 let pendingSnRows = null, pendingSnName = null;
+
+// Data "Stock Available" cabang lain (di luar gudang kami / SDNC*).
+// Sumbernya file terpisah (bukan PL/SN harian), tapi tetap diupload rutin tiap hari.
+// Ini DIGABUNG (union, bukan menggantikan) dengan hasil deteksi cabang lain dari file SN,
+// supaya barang yang tidak punya data serial number di SN (misalnya aksesoris non-serial)
+// tetap bisa kedeteksi statusnya INDENT kalau memang ada stok di cabang lain.
+let stockAvailMap = {}; // { itemCode: { whcode: qty } } — sudah dikecualikan whcode SDNC*
+let stockAvailDesc = {}; // { itemCode: desc }
+let stockAvailMeta = null; // { fileName, updatedAt }
 
 const soLauncherSection = document.getElementById('soLauncherSection');
 const soModalOverlay = document.getElementById('soModalOverlay');
@@ -803,6 +825,17 @@ async function loadCatalog(){
  .eq('key', 'so:latest')
  .single();
  if (soDbData && soDbData.payload) soData = soDbData.payload;
+
+ const { data: stockAvailDbData, error: stockAvailErr } = await supabase
+ .from('app_data')
+ .select('payload')
+ .eq('key', 'stockavail:latest')
+ .single();
+ if (stockAvailDbData && stockAvailDbData.payload) {
+ stockAvailMap = stockAvailDbData.payload.map || {};
+ stockAvailDesc = stockAvailDbData.payload.descMap || {};
+ stockAvailMeta = stockAvailDbData.payload.meta || null;
+ }
  }catch(e){
  // Fallback ke localStorage jika offline
  try {
@@ -810,8 +843,20 @@ async function loadCatalog(){
  if (res) catalog = JSON.parse(res);
  const soRes = localStorage.getItem('so:latest');
  if (soRes) soData = JSON.parse(soRes);
+ const stockAvailRes = localStorage.getItem('stockavail:latest');
+ if (stockAvailRes) {
+ const parsed = JSON.parse(stockAvailRes);
+ stockAvailMap = parsed.map || {};
+ stockAvailDesc = parsed.descMap || {};
+ stockAvailMeta = parsed.meta || null;
+ }
  }catch(err){}
  }
+ if (stockAvailMeta && stockAvailMeta.fileName){
+ stockAvailFileName.textContent = stockAvailMeta.fileName;
+ stockAvailInfo.style.display = 'flex';
+ }
+ recomputeOthersWithStockAvail();
  renderMeta();
  renderEmpty();
  if (staffMode) renderSoModules();
@@ -952,17 +997,19 @@ function buildCatalog(plRows, snRows, fileName){
  });
  });
 
- const allCodes = new Set([...Object.keys(plMap), ...Object.keys(snMap), ...Object.keys(snDesc), ...Object.keys(ownUnitsMap)]);
+ const allCodes = new Set([...Object.keys(plMap), ...Object.keys(snMap), ...Object.keys(snDesc), ...Object.keys(ownUnitsMap), ...Object.keys(stockAvailMap)]);
  const items = [];
  allCodes.forEach(code => {
  const pl = plMap[code];
+ const snOthers = snMap[code] || null;
  items.push({
  code,
- desc: (pl && pl.desc) || snDesc[code] || '(tanpa nama)',
+ desc: (pl && pl.desc) || snDesc[code] || stockAvailDesc[code] || '(tanpa nama)',
  price: pl ? pl.price : null,
  available: pl ? pl.totalAvailable : 0,
  allocatedOwn: pl ? pl.totalAllocated : 0,
- others: snMap[code] || null,
+ others: mergeOthers(snOthers, stockAvailMap[code]),
+ snOthers: snOthers,
  ownUnits: ownUnitsMap[code] || null,
  inOwnList: !!pl
  });
@@ -1147,6 +1194,66 @@ function validateSnRows(rows){
  return rows && rows.length > 0 && headerContainsAll(rows[0], ['serial number', 'admission date', 'status']);
 }
 
+function validateStockAvailRows(rows){
+ return rows && rows.length > 0 && headerContainsAll(rows[0], ['warehouse code', 'item no', 'available']);
+}
+
+// Kolom file "Stock Available": #, Warehouse Code, Item No., Item Description, Available, In Stock, Allocated
+function parseStockAvailRows(rows){
+ const map = {};
+ const descMap = {};
+ for (let i = 1; i < rows.length; i++){
+ const r = rows[i];
+ if (!r || !r[2]) continue;
+ const whcode = r[1] ? String(r[1]).trim() : '';
+ const itemCode = String(r[2]).trim();
+ const desc = r[3] ? String(r[3]).trim() : '';
+ const available = Number(r[4]) || 0;
+ if (desc && !descMap[itemCode]) descMap[itemCode] = desc;
+ if (!whcode || whcode.toUpperCase().startsWith('SDNC')) continue; // gudang kami sendiri, dilewati
+ if (available <= 0) continue;
+ if (!map[itemCode]) map[itemCode] = {};
+ map[itemCode][whcode] = (map[itemCode][whcode] || 0) + available;
+ }
+ return { map, descMap };
+}
+
+// Gabungkan hasil deteksi cabang lain dari SN dengan data Stock Available.
+// Kalau ada cabang yang sama muncul di keduanya, nilai dari Stock Available yang dipakai
+// (dianggap lebih lengkap/terbaru), sisanya digabung (union).
+function mergeOthers(snOthers, stockOthers){
+ if (!snOthers && !stockOthers) return null;
+ const merged = Object.assign({}, snOthers || {}, stockOthers || {});
+ return Object.keys(merged).length ? merged : null;
+}
+
+// Terapkan ulang data Stock Available ke catalog yang sudah ada, tanpa perlu upload ulang PL/SN.
+// Dipanggil setelah upload file Stock Available baru, atau setelah data dimuat dari cloud saat startup.
+function recomputeOthersWithStockAvail(){
+ if (!catalog || !catalog.items) return;
+ const existingCodes = new Set();
+ catalog.items.forEach(it => {
+ existingCodes.add(it.code);
+ const base = (it.snOthers !== undefined && it.snOthers !== null) ? it.snOthers : (it.others || null);
+ it.others = mergeOthers(base, stockAvailMap[it.code]);
+ });
+ Object.keys(stockAvailMap).forEach(code => {
+ if (existingCodes.has(code)) return;
+ catalog.items.push({
+ code,
+ desc: stockAvailDesc[code] || '(tanpa nama)',
+ price: null,
+ available: 0,
+ allocatedOwn: 0,
+ others: stockAvailMap[code],
+ snOthers: null,
+ ownUnits: null,
+ inOwnList: false
+ });
+ });
+ if (searchInput.value.trim()) doSearch(); else renderEmpty();
+}
+
 function readSheetFile(file){
  return new Promise((resolve, reject) => {
  const reader = new FileReader();
@@ -1232,6 +1339,37 @@ snFileInput.addEventListener('change', function(e){
  .catch(err => {
  setCheckBadge(snCheckBadge, 'bad', `✗ Gagal dibaca (${file.name})`);
  statusEl.textContent = 'Gagal membaca file SN: ' + err.message;
+ })
+ .finally(() => { e.target.value = ''; });
+});
+
+stockAvailFileInput.addEventListener('change', function(e){
+ const file = e.target.files[0];
+ if (!file) return;
+ setCheckBadge(stockAvailCheckBadge, 'loading', 'Memeriksa...');
+ statusEl.textContent = `Membaca file Stock Available (${file.name})... file besar, mohon tunggu.`;
+ ensureXlsxLoaded()
+ .then(() => readSheetFile(file))
+ .then(rows => {
+ if (!validateStockAvailRows(rows)){
+ setCheckBadge(stockAvailCheckBadge, 'bad', `✗ Kolom tidak sesuai (${file.name})`);
+ statusEl.textContent = `File "${file.name}" sepertinya bukan file Stock Available, coba periksa lagi (kolom "Warehouse Code", "Item No.", "Available" tidak ditemukan). Data lama tidak berubah.`;
+ return;
+ }
+ const { map, descMap } = parseStockAvailRows(rows);
+ stockAvailMap = map;
+ stockAvailDesc = descMap;
+ stockAvailMeta = { fileName: file.name, updatedAt: new Date().toISOString() };
+ setCheckBadge(stockAvailCheckBadge, 'ok', `✓ Kolom sesuai (${file.name})`);
+ statusEl.textContent = `Data Stock Available (${file.name}) berhasil diproses dan digabung ke status INDENT.`;
+ stockAvailFileName.textContent = file.name;
+ stockAvailInfo.style.display = 'flex';
+ saveCatalogToCloud('stockavail:latest', { map: stockAvailMap, descMap: stockAvailDesc, meta: stockAvailMeta });
+ recomputeOthersWithStockAvail();
+ })
+ .catch(err => {
+ setCheckBadge(stockAvailCheckBadge, 'bad', `✗ Gagal dibaca (${file.name})`);
+ statusEl.textContent = 'Gagal membaca file Stock Available: ' + err.message;
  })
  .finally(() => { e.target.value = ''; });
 });
