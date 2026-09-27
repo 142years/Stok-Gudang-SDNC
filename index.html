@@ -259,6 +259,84 @@
  }
  #searchInput:focus{border-color:#4A5468;}
  #searchInput::placeholder{color:var(--muted);}
+ .search-row{display:flex; align-items:stretch; gap:8px;}
+ .search-row #searchInput{flex:1;}
+ .scan-btn{
+ flex-shrink:0;
+ width:46px;
+ background:var(--panel);
+ border:1px solid var(--line);
+ border-radius:10px;
+ color:var(--text);
+ font-size:19px;
+ cursor:pointer;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ }
+ .scan-btn:active{background:#2E3440;}
+
+ #scanOverlay{
+ display:none;
+ position:fixed;
+ inset:0;
+ background:#000;
+ z-index:200;
+ flex-direction:column;
+ }
+ #scanOverlay.show{display:flex;}
+ #scanOverlay video{
+ flex:1;
+ width:100%;
+ object-fit:cover;
+ background:#000;
+ }
+ .scan-frame{
+ position:absolute;
+ top:50%; left:50%;
+ transform:translate(-50%,-50%);
+ width:78%;
+ max-width:360px;
+ aspect-ratio:16/9;
+ border:3px solid var(--staff);
+ border-radius:12px;
+ box-shadow:0 0 0 2000px rgba(0,0,0,0.45);
+ pointer-events:none;
+ }
+ .scan-topbar{
+ position:absolute;
+ top:0; left:0; right:0;
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ padding:14px 16px;
+ padding-top:calc(14px + env(safe-area-inset-top, 0px));
+ z-index:2;
+ }
+ .scan-topbar span{color:#fff; font-size:13px; font-weight:600;}
+ .scan-close{
+ background:rgba(255,255,255,0.12);
+ border:none;
+ color:#fff;
+ width:34px; height:34px;
+ border-radius:50%;
+ font-size:18px;
+ cursor:pointer;
+ display:flex; align-items:center; justify-content:center;
+ }
+ .scan-status{
+ position:absolute;
+ bottom:calc(24px + env(safe-area-inset-bottom, 0px));
+ left:50%;
+ transform:translateX(-50%);
+ color:#fff;
+ font-size:12.5px;
+ background:rgba(0,0,0,0.5);
+ padding:6px 14px;
+ border-radius:20px;
+ text-align:center;
+ max-width:85%;
+ }
  #results{padding:10px 16px 0;}
  .empty{
  color:var(--muted);
@@ -582,10 +660,23 @@
  </div>
 
  <div class="search-wrap">
+ <div class="search-row">
  <input type="text" id="searchInput" placeholder="Ketik nama, kode, no. SN, atau barcode..." autocomplete="off" />
+ <button id="scanBtn" class="scan-btn" title="Scan Barcode pakai Kamera" aria-label="Scan Barcode">📷</button>
+ </div>
  </div>
  <div id="results"></div>
  <div class="note" id="footNote"></div>
+
+ <div id="scanOverlay">
+ <div class="scan-topbar">
+ <span>Arahkan kamera ke barcode</span>
+ <button id="scanCloseBtn" class="scan-close" aria-label="Tutup">✕</button>
+ </div>
+ <video id="scanVideo" playsinline muted autoplay></video>
+ <div class="scan-frame"></div>
+ <div class="scan-status" id="scanStatus">Menyalakan kamera...</div>
+ </div>
 
  <div id="pinOverlay">
  <div id="pinBox">
@@ -1184,6 +1275,20 @@ function ensureXlsxLoaded(){
  return xlsxLoadPromise;
 }
 
+let zxingLoadPromise = null;
+function ensureZxingLoaded(){
+ if (window.ZXing) return Promise.resolve();
+ if (zxingLoadPromise) return zxingLoadPromise;
+ zxingLoadPromise = new Promise((resolve, reject) => {
+ const s = document.createElement('script');
+ s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
+ s.onload = () => resolve();
+ s.onerror = () => reject(new Error('Gagal memuat pustaka pemindai barcode.'));
+ document.head.appendChild(s);
+ });
+ return zxingLoadPromise;
+}
+
 function headerContainsAll(headerRow, keywords){
  const joined = (headerRow || []).map(c => String(c || '').toLowerCase()).join(' | ');
  return keywords.every(k => joined.includes(k));
@@ -1560,6 +1665,77 @@ function doVerify(){
  verifyResult.innerHTML = `${itemLine}<br/>${priceDisplay}<br/><span class="verify-warn">⚠ Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}) — ambil itu dulu.${allocWarn}`;
  }
 }
+
+// ===== Scan Barcode pakai Kamera HP =====
+const scanBtn = document.getElementById('scanBtn');
+const scanOverlay = document.getElementById('scanOverlay');
+const scanVideo = document.getElementById('scanVideo');
+const scanStatus = document.getElementById('scanStatus');
+const scanCloseBtn = document.getElementById('scanCloseBtn');
+
+let zxingReader = null;
+let scanStream = null;
+
+function stopScan(){
+ try { if (zxingReader) zxingReader.reset(); } catch(e){}
+ if (scanStream){
+ scanStream.getTracks().forEach(t => t.stop());
+ scanStream = null;
+ }
+ scanVideo.srcObject = null;
+ scanOverlay.classList.remove('show');
+}
+
+async function startScan(){
+ if (!window.isSecureContext && location.hostname !== 'localhost'){
+ alert('Scan kamera cuma bisa jalan di halaman HTTPS (atau localhost). Hubungi admin untuk pasang HTTPS di website ini.');
+ return;
+ }
+ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+ alert('Browser ini tidak mendukung akses kamera. Coba pakai Chrome/Safari versi terbaru.');
+ return;
+ }
+ scanOverlay.classList.add('show');
+ scanStatus.textContent = 'Menyalakan kamera...';
+ try {
+ await ensureZxingLoaded();
+ } catch(err){
+ scanStatus.textContent = err.message;
+ return;
+ }
+ try {
+ if (!zxingReader) zxingReader = new ZXing.BrowserMultiFormatReader();
+ const devices = await zxingReader.listVideoInputDevices();
+ // Prioritaskan kamera belakang (biasanya lebih tajam untuk scan)
+ const backCam = devices.find(d => /back|rear|environment/i.test(d.label));
+ const deviceId = (backCam || devices[devices.length - 1] || {}).deviceId;
+
+ await zxingReader.decodeFromVideoDevice(deviceId, scanVideo, (result, err) => {
+ if (result){
+ const text = result.getText();
+ stopScan();
+ searchInput.value = text;
+ doSearch();
+ searchInput.scrollIntoView({ behavior: 'smooth', block: 'start' });
+ }
+ // NotFoundException muncul terus menerus selama belum ketemu barcode — bukan error, diabaikan.
+ });
+ scanStream = scanVideo.srcObject;
+ scanStatus.textContent = 'Arahkan kamera ke barcode...';
+ } catch(err){
+ let msg = 'Gagal mengakses kamera: ' + err.message;
+ if (err.name === 'NotAllowedError') msg = 'Izin kamera ditolak. Aktifkan izin kamera untuk website ini di pengaturan browser.';
+ else if (err.name === 'NotFoundError') msg = 'Kamera tidak ditemukan di perangkat ini.';
+ else if (location.protocol === 'file:') msg = 'Halaman ini dibuka langsung dari file (bukan lewat alamat web/https), jadi browser tidak mengizinkan akses kamera. Upload dulu file ini ke hosting berbasis HTTPS, baru fitur scan bisa jalan.';
+ scanStatus.textContent = msg;
+ }
+}
+
+scanBtn.addEventListener('click', startScan);
+scanCloseBtn.addEventListener('click', stopScan);
+document.addEventListener('visibilitychange', function(){
+ if (document.hidden) stopScan();
+});
 
 loadCatalog();
 
