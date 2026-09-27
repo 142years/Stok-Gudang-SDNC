@@ -1704,13 +1704,37 @@ async function startScan(){
  return;
  }
  try {
- if (!zxingReader) zxingReader = new ZXing.BrowserMultiFormatReader();
- const devices = await zxingReader.listVideoInputDevices();
- // Prioritaskan kamera belakang (biasanya lebih tajam untuk scan)
- const backCam = devices.find(d => /back|rear|environment/i.test(d.label));
- const deviceId = (backCam || devices[devices.length - 1] || {}).deviceId;
-
- await zxingReader.decodeFromVideoDevice(deviceId, scanVideo, (result, err) => {
+ if (!zxingReader){
+ const hints = new Map();
+ // Batasi ke format yang relevan untuk barcode produk (EAN/UPC/CODE) + QR,
+ // supaya proses decode lebih cepat & tidak "bingung" mencoba semua format.
+ hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+ ZXing.BarcodeFormat.EAN_13,
+ ZXing.BarcodeFormat.EAN_8,
+ ZXing.BarcodeFormat.UPC_A,
+ ZXing.BarcodeFormat.UPC_E,
+ ZXing.BarcodeFormat.CODE_128,
+ ZXing.BarcodeFormat.CODE_39,
+ ZXing.BarcodeFormat.CODE_93,
+ ZXing.BarcodeFormat.ITF,
+ ZXing.BarcodeFormat.QR_CODE
+ ]);
+ hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+ // Interval scan dipercepat dari default (~500ms) jadi 200ms
+ zxingReader = new ZXing.BrowserMultiFormatReader(hints, 200);
+ }
+ // Minta constraint kamera eksplisit: resolusi lebih tinggi + autofocus kontinu.
+ // decodeFromVideoDevice sebelumnya cuma minta video generik tanpa ini,
+ // sehingga di banyak HP kamera jadi kurang fokus/resolusi rendah saat scan jarak dekat.
+ const constraints = {
+ video: {
+ facingMode: { ideal: 'environment' },
+ width: { ideal: 1280 },
+ height: { ideal: 720 },
+ advanced: [{ focusMode: 'continuous' }]
+ }
+ };
+ await zxingReader.decodeFromConstraints(constraints, scanVideo, (result, err) => {
  if (result){
  const text = result.getText();
  stopScan();
@@ -1721,7 +1745,7 @@ async function startScan(){
  // NotFoundException muncul terus menerus selama belum ketemu barcode — bukan error, diabaikan.
  });
  scanStream = scanVideo.srcObject;
- scanStatus.textContent = 'Arahkan kamera ke barcode...';
+ scanStatus.textContent = 'Arahkan kamera ke barcode — dekatkan/jauhkan sampai fokus jelas & pastikan cukup cahaya.';
  } catch(err){
  let msg = 'Gagal mengakses kamera: ' + err.message;
  if (err.name === 'NotAllowedError') msg = 'Izin kamera ditolak. Aktifkan izin kamera untuk website ini di pengaturan browser.';
