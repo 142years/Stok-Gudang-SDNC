@@ -357,6 +357,27 @@
  padding-top:4px;
  font-style:italic;
  }
+ .branch-unit-wrap{
+ border-top:1px dashed var(--line);
+ padding:6px 0;
+ }
+ .branch-unit-wrap:first-child{border-top:none;}
+ .branch-unit-toggle{
+ display:flex;
+ justify-content:space-between;
+ width:100%;
+ background:none;
+ border:none;
+ cursor:pointer;
+ font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+ font-size:11.5px;
+ color:var(--muted);
+ padding:2px 0;
+ text-align:left;
+ min-height:28px;
+ align-items:center;
+ }
+ .branch-unit-toggle:active{color:var(--staff);}
  .badge-mini{
  display:inline-block;
  font-size:10px;
@@ -639,6 +660,7 @@ let staffMode = false;
 const RESULT_LIMIT = 60;
 const openFifo = new Set();
 const openBranches = new Set();
+const openBranchUnits = new Set(); // key: `${code}::${whcode}` — untuk buka daftar SN per cabang lain
 
 // Data barcode (Item No. -> Bar Code), diupload lewat tombol "Upload Data Barcode"
 // (bukan ditempel statis lagi di kode, supaya file HTML ini tidak jadi berat).
@@ -984,6 +1006,7 @@ function buildCatalog(plRows, snRows, fileName){
  const snMap = {};
  const snDesc = {};
  const ownUnitsMap = {};
+ const otherUnitsMap = {}; // { itemCode: { whcode: [ {serial, admissionDate, ts} ] } } — SN milik cabang lain
  for (let i = 1; i < snRows.length; i++){
  const r = snRows[i];
  if (!r || !r[1]) continue;
@@ -1006,9 +1029,20 @@ function buildCatalog(plRows, snRows, fileName){
  // Cabang lain: hanya yang benar-benar Available dihitung untuk info indent
  if (!snMap[itemCode]) snMap[itemCode] = {};
  snMap[itemCode][whcode] = (snMap[itemCode][whcode] || 0) + 1;
+ // Simpan juga nomor SN-nya per cabang, supaya bisa ditampilkan/di-copy saat barang datang
+ if (serial){
+ if (!otherUnitsMap[itemCode]) otherUnitsMap[itemCode] = {};
+ if (!otherUnitsMap[itemCode][whcode]) otherUnitsMap[itemCode][whcode] = [];
+ otherUnitsMap[itemCode][whcode].push({ serial, admissionDate: admDate ? admDate.display : '', ts: admDate ? admDate.ts : 0 });
  }
  }
  }
+ }
+ Object.keys(otherUnitsMap).forEach(code => {
+ Object.keys(otherUnitsMap[code]).forEach(wh => {
+ otherUnitsMap[code][wh].sort((a, b) => a.ts - b.ts);
+ });
+ });
 
  const serialIndex = {};
  Object.keys(ownUnitsMap).forEach(code => {
@@ -1041,6 +1075,7 @@ function buildCatalog(plRows, snRows, fileName){
  allocatedOwn: pl ? pl.totalAllocated : 0,
  others: mergeOthers(snOthers, stockAvailMap[code]),
  snOthers: snOthers,
+ otherUnits: otherUnitsMap[code] || null,
  ownUnits: ownUnitsMap[code] || null,
  inOwnList: !!pl
  });
@@ -1296,6 +1331,7 @@ function recomputeOthersWithStockAvail(){
  allocatedOwn: 0,
  others: stockAvailMap[code],
  snOthers: null,
+ otherUnits: null,
  ownUnits: null,
  inOwnList: false
  });
@@ -1512,9 +1548,30 @@ function renderBranchesToggle(it){
  let listHtml = '';
  if (isOpen){
  const sorted = Object.entries(it.others).sort((a,b) => b[1]-a[1]);
- listHtml = '<div class="branch-list">' + sorted.map(([wh,qty]) => `
- <div class="branch-row"><span>${escapeHtml(wh)}</span><span>${qty} pcs</span></div>
+ listHtml = '<div class="branch-list">' + sorted.map(([wh,qty]) => {
+ const bKey = it.code + '::' + wh;
+ const branchOpen = openBranchUnits.has(bKey);
+ const units = (it.otherUnits && it.otherUnits[wh]) || [];
+ let unitsHtml = '';
+ if (branchOpen){
+ if (units.length){
+ unitsHtml = '<div class="fifo-list">' + units.map((u, idx) => `
+ <div class="fifo-row${idx === 0 ? ' first' : ''}">
+ <span>${idx === 0 ? '➜ ' : ''}${escapeHtml(u.serial)}</span>
+ <span>${escapeHtml(u.admissionDate)}</span>
+ </div>
  `).join('') + '</div>';
+ } else {
+ unitsHtml = '<div class="fifo-list"><div class="fifo-more">Nomor SN untuk cabang ini tidak tersedia (bukan dari data per-unit).</div></div>';
+ }
+ }
+ return `<div class="branch-unit-wrap">
+ <button class="branch-unit-toggle" data-code="${escapeHtml(it.code)}" data-wh="${escapeHtml(wh)}">
+ <span>${escapeHtml(wh)}</span><span>${qty} pcs</span>
+ </button>
+ ${unitsHtml}
+ </div>`;
+ }).join('') + '</div>';
  }
  return `<button class="branch-toggle" data-code="${escapeHtml(it.code)}">${label}</button>${listHtml}`;
 }
@@ -1552,6 +1609,15 @@ function renderItem(it){
 }
 
 resultsEl.addEventListener('click', function(e){
+ const branchUnitBtn = e.target.closest('.branch-unit-toggle');
+ if (branchUnitBtn){
+ const code = branchUnitBtn.getAttribute('data-code');
+ const wh = branchUnitBtn.getAttribute('data-wh');
+ const key = code + '::' + wh;
+ if (openBranchUnits.has(key)) openBranchUnits.delete(key); else openBranchUnits.add(key);
+ doSearch();
+ return;
+ }
  const fifoBtn = e.target.closest('.fifo-toggle');
  if (fifoBtn){
  const code = fifoBtn.getAttribute('data-code');
