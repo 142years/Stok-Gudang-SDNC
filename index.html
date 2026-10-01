@@ -1416,32 +1416,42 @@ async function detectAndProcessFile(file){
  pendingPlRows = rows;
  pendingPlName = file.name;
  setCheckBadge(plCheckBadge, 'ok', `✓ ${file.name}`);
- return 'pl';
+ return { type: 'pl', ok: true };
  }
  if (validateSnRows(rows)){
  pendingSnRows = rows;
  pendingSnName = file.name;
  setCheckBadge(snCheckBadge, 'ok', `✓ ${file.name}`);
- return 'sn';
+ return { type: 'sn', ok: true };
  }
  if (validateStockAvailRows(rows)){
  const { map, descMap } = parseStockAvailRows(rows);
  stockAvailMap = map;
  stockAvailDesc = descMap;
  stockAvailMeta = { fileName: file.name, updatedAt: new Date().toISOString() };
+ setCheckBadge(stockAvailCheckBadge, 'loading', 'Menyimpan ke server...');
+ const result = await saveCatalogToCloud('stockavail:latest', { map: stockAvailMap, descMap: stockAvailDesc, meta: stockAvailMeta });
+ if (result.ok){
  setCheckBadge(stockAvailCheckBadge, 'ok', `✓ ${file.name}`);
- saveCatalogToCloud('stockavail:latest', { map: stockAvailMap, descMap: stockAvailDesc, meta: stockAvailMeta });
- return 'stockavail';
+ } else {
+ setCheckBadge(stockAvailCheckBadge, 'bad', `✗ Gagal simpan ke server: ${result.message}`);
+ }
+ return { type: 'stockavail', ok: result.ok, message: result.message };
  }
  if (validateBarcodeRows(rows)){
  BARCODE_MAP = parseBarcodeRows(rows);
  getBarcodes._normIndex = null;
  barcodeMeta = { fileName: file.name, updatedAt: new Date().toISOString() };
+ setCheckBadge(barcodeCheckBadge, 'loading', 'Menyimpan ke server...');
+ const result = await saveCatalogToCloud('barcode:latest', { map: BARCODE_MAP, meta: barcodeMeta });
+ if (result.ok){
  setCheckBadge(barcodeCheckBadge, 'ok', `✓ ${file.name}`);
- saveCatalogToCloud('barcode:latest', { map: BARCODE_MAP, meta: barcodeMeta });
- return 'barcode';
+ } else {
+ setCheckBadge(barcodeCheckBadge, 'bad', `✗ Gagal simpan ke server: ${result.message}`);
  }
- return null;
+ return { type: 'barcode', ok: result.ok, message: result.message };
+ }
+ return { type: null, ok: false };
 }
 
 multiFileInput.addEventListener('change', async function(e){
@@ -1461,21 +1471,33 @@ multiFileInput.addEventListener('change', async function(e){
  for (const file of files){
  statusEl.textContent = `Memproses ${file.name}... (${okList.length + failList.length + 1}/${files.length})`;
  try {
- const type = await detectAndProcessFile(file);
- if (type) okList.push(file.name);
- else failList.push(`${file.name} (format tidak dikenali)`);
+ const result = await detectAndProcessFile(file);
+ if (!result.type) failList.push(`${file.name} (format tidak dikenali)`);
+ else if (!result.ok) failList.push(`${file.name} (${result.message || 'gagal simpan ke server'})`);
+ else okList.push(file.name);
  } catch(err){
  failList.push(`${file.name} (gagal dibaca: ${err.message})`);
  }
  }
 
- tryBuildCatalogFromPending();
+ // PL+SN disimpan lewat jalur ini (bukan di dalam detectAndProcessFile) karena baru bisa
+ // digabung & disimpan setelah KEDUANYA lengkap. Fungsi ini sendiri yang akan menulis
+ // status akhir (berhasil/gagal lengkap dengan pesan error) ke statusEl.
+ const plSnPending = !!(pendingPlRows && pendingSnRows);
+ if (plSnPending){
+ await tryBuildCatalogFromPending();
+ }
  recomputeOthersWithStockAvail();
 
+ // Jangan timpa pesan sinkron PL/SN yang baru saja ditulis tryBuildCatalogFromPending di atas
+ if (!plSnPending){
  if (failList.length){
- statusEl.textContent = `${okList.length} file berhasil diproses. ${failList.length} file gagal/tidak dikenali: ${failList.join(', ')}`;
+ statusEl.textContent = `${okList.length} file berhasil diproses. ${failList.length} file bermasalah: ${failList.join(' | ')}`;
  } else {
- statusEl.textContent = `${okList.length} file berhasil diproses.`;
+ statusEl.textContent = `${okList.length} file berhasil diproses & tersimpan ke server.`;
+ }
+ } else if (failList.length){
+ statusEl.textContent += ` (${failList.length} file lain bermasalah: ${failList.join(' | ')})`;
  }
  e.target.value = '';
 });
