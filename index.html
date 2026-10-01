@@ -959,13 +959,31 @@ async function saveCatalogToCloud(key, payloadData){
  const { error: delErr } = await supabase.from('app_data').delete().eq('key', key);
  if (delErr){
  console.error(`Gagal membersihkan data lama "${key}":`, delErr.message);
- return { ok:false, message: delErr.message };
+ return { ok:false, message: `Gagal hapus data lama (${delErr.message})` };
  }
  const { error: insErr } = await supabase.from('app_data').insert({ key: key, payload: payloadData });
  if (insErr){
  console.error(`Gagal simpan "${key}" ke server:`, insErr.message);
- return { ok:false, message: insErr.message };
+ return { ok:false, message: `Gagal simpan (${insErr.message})` };
  }
+
+ // VERIFIKASI: baca lagi datanya untuk pastikan benar-benar tersimpan & BISA dibaca balik.
+ // Ini penting karena kalau RLS (Row Level Security) di tabel app_data mengizinkan
+ // INSERT/DELETE tapi tidak mengizinkan SELECT untuk role anon, perintah simpan di atas
+ // akan terlihat "berhasil" (tidak ada error) padahal datanya tidak akan pernah bisa
+ // dibaca balik oleh siapapun — baik di device ini maupun device lain.
+ const { data: checkData, error: checkErr } = await supabase
+ .from('app_data')
+ .select('key')
+ .eq('key', key)
+ .limit(1);
+ if (checkErr){
+ return { ok:false, message: `Tersimpan tapi gagal diverifikasi ulang (${checkErr.message})` };
+ }
+ if (!checkData || checkData.length === 0){
+ return { ok:false, message: `Data terkirim TANPA error, tapi saat dibaca ulang tidak ditemukan sama sekali. Ini tanda kuat ada masalah izin akses (RLS policy) di tabel "app_data" — kemungkinan besar role "anon" diizinkan menulis (INSERT/DELETE) tapi TIDAK diizinkan membaca (SELECT). Tambahkan policy SELECT untuk role anon di Supabase.` };
+ }
+
  return { ok:true, message:'' };
  } catch(e) {
  console.error(e);
