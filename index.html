@@ -129,6 +129,14 @@
  user-select:none;
  }
  .upload-btn:active{background:#2E3440;}
+ .upload-btn.primary{
+ background:var(--staff-bg);
+ border-color:var(--staff);
+ color:var(--staff);
+ flex:1;
+ min-width:220px;
+ text-align:center;
+ }
  .upload-slot{display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;}
  .upload-check{
  font-size:11px;
@@ -142,7 +150,37 @@
  .upload-check.ok{color:var(--ready); background:var(--ready-bg); border:1px solid var(--ready);}
  .upload-check.bad{color:var(--out); background:var(--out-bg); border:1px solid var(--out);}
  .upload-check.loading{color:var(--muted); background:var(--panel-2); border:1px solid var(--line);}
- #uploadStatus{font-size:12.5px;color:var(--muted);}
+ #uploadStatus{font-size:12.5px;color:var(--muted); width:100%; min-height:1em;}
+ .upload-status-grid{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:6px 10px;
+ width:100%;
+ }
+ .upload-status-item{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:8px;
+ background:var(--panel);
+ border:1px solid var(--line);
+ border-radius:6px;
+ padding:6px 10px;
+ }
+ .upload-status-label{
+ font-size:11.5px;
+ color:var(--muted);
+ font-weight:600;
+ }
+ .upload-status-item .upload-check{display:inline-block;}
+ .upload-status-item .upload-check:empty::before{
+ content:'belum ada';
+ color:var(--muted);
+ font-weight:600;
+ background:none;
+ border:none;
+ padding:0;
+ }
  #verifySection{
  display:none;
  padding:14px 16px;
@@ -357,6 +395,27 @@
  padding-top:4px;
  font-style:italic;
  }
+ .branch-unit-wrap{
+ border-top:1px dashed var(--line);
+ padding:6px 0;
+ }
+ .branch-unit-wrap:first-child{border-top:none;}
+ .branch-unit-toggle{
+ display:flex;
+ justify-content:space-between;
+ width:100%;
+ background:none;
+ border:none;
+ cursor:pointer;
+ font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+ font-size:11.5px;
+ color:var(--muted);
+ padding:2px 0;
+ text-align:left;
+ min-height:28px;
+ align-items:center;
+ }
+ .branch-unit-toggle:active{color:var(--staff);}
  .badge-mini{
  display:inline-block;
  font-size:10px;
@@ -483,40 +542,28 @@
 
  <div id="uploadSection">
  <div class="upload-actions">
- <div class="upload-slot">
- <label class="upload-btn" for="plFileInput">Upload Stock/Price List</label>
- <input type="file" id="plFileInput" accept=".xlsx" style="display:none" />
+ <label class="upload-btn primary" for="multiFileInput">📤 Upload File Excel (bisa pilih beberapa sekaligus)</label>
+ <input type="file" id="multiFileInput" accept=".xlsx" multiple style="display:none" />
+ <button id="resetDataBtn" class="upload-btn" style="background:var(--out-bg); color:var(--out); border-color:var(--out);">Hapus Data</button>
+ </div>
+ <div id="uploadStatus"></div>
+ <div class="upload-status-grid">
+ <div class="upload-status-item">
+ <span class="upload-status-label">Price List</span>
  <span id="plCheckBadge" class="upload-check"></span>
  </div>
- <div class="upload-slot">
- <label class="upload-btn" for="snFileInput">Upload Serial Number</label>
- <input type="file" id="snFileInput" accept=".xlsx" style="display:none" />
+ <div class="upload-status-item">
+ <span class="upload-status-label">Serial Number</span>
  <span id="snCheckBadge" class="upload-check"></span>
  </div>
- <div class="upload-slot">
- <label class="upload-btn" for="stockAvailFileInput">Upload Stock Available (Cabang Lain)</label>
- <input type="file" id="stockAvailFileInput" accept=".xlsx" style="display:none" />
+ <div class="upload-status-item">
+ <span class="upload-status-label">Stock Available</span>
  <span id="stockAvailCheckBadge" class="upload-check"></span>
  </div>
- <div class="upload-slot">
- <label class="upload-btn" for="barcodeFileInput">Upload Data Barcode</label>
- <input type="file" id="barcodeFileInput" accept=".xlsx" style="display:none" />
+ <div class="upload-status-item">
+ <span class="upload-status-label">Data Barcode</span>
  <span id="barcodeCheckBadge" class="upload-check"></span>
  </div>
- <button id="resetDataBtn" class="upload-btn" style="background:var(--out-bg); color:var(--out); border-color:var(--out);">Hapus Data</button>
- <span id="uploadStatus"></span>
- </div>
- <div id="uploadFileInfo" class="file-info-badge" style="display:none;">
- <span class="file-label">File saat ini:</span>
- <span class="file-name" id="currentFileName"></span>
- </div>
- <div id="stockAvailInfo" class="file-info-badge" style="display:none;">
- <span class="file-label">Data cabang lain (Stock Available):</span>
- <span class="file-name" id="stockAvailFileName"></span>
- </div>
- <div id="barcodeInfo" class="file-info-badge" style="display:none;">
- <span class="file-label">Data Barcode:</span>
- <span class="file-name" id="barcodeFileName"></span>
  </div>
  </div>
 
@@ -639,6 +686,7 @@ let staffMode = false;
 const RESULT_LIMIT = 60;
 const openFifo = new Set();
 const openBranches = new Set();
+const openBranchUnits = new Set(); // key: `${code}::${whcode}` — untuk buka daftar SN per cabang lain
 
 // Data barcode (Item No. -> Bar Code), diupload lewat tombol "Upload Data Barcode"
 // (bukan ditempel statis lagi di kode, supaya file HTML ini tidak jadi berat).
@@ -667,8 +715,6 @@ function getBarcodes(code){
 const resultsEl = document.getElementById('results');
 const staleBanner = document.getElementById('staleBanner');
 const metaDetail = document.getElementById('metaDetail');
-const uploadFileInfo = document.getElementById('uploadFileInfo');
-const currentFileName = document.getElementById('currentFileName');
 const statusEl = document.getElementById('uploadStatus');
 const searchInput = document.getElementById('searchInput');
 const footNote = document.getElementById('footNote');
@@ -677,18 +723,11 @@ const uploadSection = document.getElementById('uploadSection');
 const verifySection = document.getElementById('verifySection');
 const verifyInput = document.getElementById('verifyInput');
 const verifyResult = document.getElementById('verifyResult');
-const plFileInput = document.getElementById('plFileInput');
-const snFileInput = document.getElementById('snFileInput');
+const multiFileInput = document.getElementById('multiFileInput');
 const plCheckBadge = document.getElementById('plCheckBadge');
 const snCheckBadge = document.getElementById('snCheckBadge');
-const stockAvailFileInput = document.getElementById('stockAvailFileInput');
 const stockAvailCheckBadge = document.getElementById('stockAvailCheckBadge');
-const stockAvailInfo = document.getElementById('stockAvailInfo');
-const stockAvailFileName = document.getElementById('stockAvailFileName');
-const barcodeFileInput = document.getElementById('barcodeFileInput');
 const barcodeCheckBadge = document.getElementById('barcodeCheckBadge');
-const barcodeInfo = document.getElementById('barcodeInfo');
-const barcodeFileName = document.getElementById('barcodeFileName');
 
 function setCheckBadge(el, state, text){
  el.className = 'upload-check show ' + state; // state: 'ok' | 'bad' | 'loading'
@@ -818,92 +857,115 @@ document.querySelectorAll('.so-tab').forEach(tab => {
  });
 });
 
-// Load data dari Supabase Cloud agar bisa diakses semua device
-async function loadCatalog(){
- try{
- const { data: invData, error: invErr } = await supabase
- .from('app_data')
- .select('payload')
- .eq('key', 'inventory:latest')
- .single();
- if (invData && invData.payload) catalog = invData.payload;
-
- const { data: soDbData, error: soErr } = await supabase
- .from('app_data')
- .select('payload')
- .eq('key', 'so:latest')
- .single();
- if (soDbData && soDbData.payload) soData = soDbData.payload;
-
- const { data: stockAvailDbData, error: stockAvailErr } = await supabase
- .from('app_data')
- .select('payload')
- .eq('key', 'stockavail:latest')
- .single();
- if (stockAvailDbData && stockAvailDbData.payload) {
- stockAvailMap = stockAvailDbData.payload.map || {};
- stockAvailDesc = stockAvailDbData.payload.descMap || {};
- stockAvailMeta = stockAvailDbData.payload.meta || null;
- }
-
- const { data: barcodeDbData, error: barcodeErr } = await supabase
- .from('app_data')
- .select('payload')
- .eq('key', 'barcode:latest')
- .single();
- if (barcodeDbData && barcodeDbData.payload) {
- BARCODE_MAP = barcodeDbData.payload.map || {};
- barcodeMeta = barcodeDbData.payload.meta || null;
- getBarcodes._normIndex = null;
- }
- }catch(e){
- // Fallback ke localStorage jika offline
+// Ambil 1 payload terbaru untuk sebuah key. Dibuat SELALU aman dipanggil — tidak pernah
+// melempar error walau baris datanya belum ada ATAU (kalau ada bug data ganda) lebih dari satu,
+// supaya kegagalan satu key tidak ikut menggagalkan key lainnya.
+async function fetchLatestPayload(key){
  try {
- const res = localStorage.getItem('inventory:latest');
- if (res) catalog = JSON.parse(res);
- const soRes = localStorage.getItem('so:latest');
- if (soRes) soData = JSON.parse(soRes);
- const stockAvailRes = localStorage.getItem('stockavail:latest');
- if (stockAvailRes) {
- const parsed = JSON.parse(stockAvailRes);
+ const { data, error } = await supabase
+ .from('app_data')
+ .select('payload')
+ .eq('key', key)
+ .limit(1);
+ if (error){
+ console.error(`Gagal memuat "${key}" dari server:`, error.message);
+ return { ok:false, payload:null, message: error.message };
+ }
+ const payload = (data && data[0]) ? data[0].payload : null;
+ return { ok:true, payload, message:'' };
+ } catch(e){
+ console.error(`Error memuat "${key}":`, e);
+ return { ok:false, payload:null, message: e.message || String(e) };
+ }
+}
+
+// Load data dari Supabase Cloud agar bisa diakses semua device.
+// Tiap key dimuat independen — kalau salah satu gagal (atau belum ada datanya),
+// yang lain tetap lanjut dimuat normal.
+async function loadCatalog(){
+ const cloudErrors = [];
+
+ const inv = await fetchLatestPayload('inventory:latest');
+ if (inv.payload) catalog = inv.payload;
+ else {
+ if (!inv.ok) cloudErrors.push(`Stok/Harga: ${inv.message}`);
+ try { const res = localStorage.getItem('inventory:latest'); if (res) catalog = JSON.parse(res); } catch(e){}
+ }
+
+ const so = await fetchLatestPayload('so:latest');
+ if (so.payload) soData = so.payload;
+ else {
+ if (!so.ok) cloudErrors.push(`Stock Opname: ${so.message}`);
+ try { const res = localStorage.getItem('so:latest'); if (res) soData = JSON.parse(res); } catch(e){}
+ }
+
+ const stockAvail = await fetchLatestPayload('stockavail:latest');
+ if (stockAvail.payload){
+ stockAvailMap = stockAvail.payload.map || {};
+ stockAvailDesc = stockAvail.payload.descMap || {};
+ stockAvailMeta = stockAvail.payload.meta || null;
+ } else {
+ if (!stockAvail.ok) cloudErrors.push(`Stock Available: ${stockAvail.message}`);
+ try {
+ const res = localStorage.getItem('stockavail:latest');
+ if (res){
+ const parsed = JSON.parse(res);
  stockAvailMap = parsed.map || {};
  stockAvailDesc = parsed.descMap || {};
  stockAvailMeta = parsed.meta || null;
  }
- const barcodeRes = localStorage.getItem('barcode:latest');
- if (barcodeRes) {
- const parsed = JSON.parse(barcodeRes);
+ }catch(e){}
+ }
+
+ const barcode = await fetchLatestPayload('barcode:latest');
+ if (barcode.payload){
+ BARCODE_MAP = barcode.payload.map || {};
+ barcodeMeta = barcode.payload.meta || null;
+ getBarcodes._normIndex = null;
+ } else {
+ if (!barcode.ok) cloudErrors.push(`Barcode: ${barcode.message}`);
+ try {
+ const res = localStorage.getItem('barcode:latest');
+ if (res){
+ const parsed = JSON.parse(res);
  BARCODE_MAP = parsed.map || {};
  barcodeMeta = parsed.meta || null;
  getBarcodes._normIndex = null;
  }
- }catch(err){}
+ }catch(e){}
  }
- if (stockAvailMeta && stockAvailMeta.fileName){
- stockAvailFileName.textContent = stockAvailMeta.fileName;
- stockAvailInfo.style.display = 'flex';
+
+ if (cloudErrors.length){
+ console.error('Sebagian data gagal dimuat dari server (dipakai cadangan lokal):', cloudErrors);
+ statusEl.textContent = `⚠ Gagal memuat dari server, dipakai data lokal perangkat ini: ${cloudErrors.join(' | ')}`;
  }
- if (barcodeMeta && barcodeMeta.fileName){
- barcodeFileName.textContent = barcodeMeta.fileName;
- barcodeInfo.style.display = 'flex';
- }
+
  recomputeOthersWithStockAvail();
  renderMeta();
  renderEmpty();
  if (staffMode) renderSoModules();
 }
 
+// Simpan 1 payload ke cloud dengan pola hapus-lalu-tulis (bukan upsert), supaya:
+// 1) Tidak bergantung pada constraint UNIQUE di kolom "key" pada tabel app_data
+// (kalau constraint itu tidak ada, upsert bisa diam-diam membuat baris duplikat,
+// yang bikin pembacaan data jadi tidak menentu/ketuker antar perangkat).
+// 2) Baris duplikat lama (kalau sudah kadung ada) otomatis rapi lagi tiap kali ada upload baru.
 async function saveCatalogToCloud(key, payloadData){
- // Simpan lokal dulu sebagai backup
+ // Simpan lokal dulu sebagai cadangan (tetap berguna walau server gagal)
  try { localStorage.setItem(key, JSON.stringify(payloadData)); } catch(e){}
 
  try {
- // Simpan ke Cloud Supabase (Upsert berdasarkan key) — ini yang membuat semua pengguna link melihat data yang sama
- const { error } = await supabase
- .from('app_data')
- .upsert({ key: key, payload: payloadData }, { onConflict: 'key' });
-
- if (error){ console.error('Gagal simpan ke cloud:', error.message); return { ok:false, message: error.message }; }
+ const { error: delErr } = await supabase.from('app_data').delete().eq('key', key);
+ if (delErr){
+ console.error(`Gagal membersihkan data lama "${key}":`, delErr.message);
+ return { ok:false, message: delErr.message };
+ }
+ const { error: insErr } = await supabase.from('app_data').insert({ key: key, payload: payloadData });
+ if (insErr){
+ console.error(`Gagal simpan "${key}" ke server:`, insErr.message);
+ return { ok:false, message: insErr.message };
+ }
  return { ok:true, message:'' };
  } catch(e) {
  console.error(e);
@@ -932,22 +994,12 @@ function updateStaleBanner(){
 function renderMeta(){
  if (!catalog){
  metaDetail.textContent = 'Belum ada data tersimpan';
- uploadFileInfo.style.display = 'none';
- currentFileName.textContent = '';
  updateStaleBanner();
  return;
  }
  const d = new Date(catalog.updatedAt);
  const dateStr = d.toLocaleString('id-ID', {dateStyle:'medium', timeStyle:'short'});
  metaDetail.textContent = `Update terakhir ${dateStr} · ${catalog.items.length} item`;
-
- if (catalog.fileName){
- currentFileName.textContent = catalog.fileName;
- uploadFileInfo.style.display = 'flex';
- } else {
- uploadFileInfo.style.display = 'none';
- currentFileName.textContent = '';
- }
  updateStaleBanner();
 }
 
@@ -984,6 +1036,7 @@ function buildCatalog(plRows, snRows, fileName){
  const snMap = {};
  const snDesc = {};
  const ownUnitsMap = {};
+ const otherUnitsMap = {}; // { itemCode: { whcode: [ {serial, admissionDate, ts} ] } } — SN milik cabang lain
  for (let i = 1; i < snRows.length; i++){
  const r = snRows[i];
  if (!r || !r[1]) continue;
@@ -1002,13 +1055,25 @@ function buildCatalog(plRows, snRows, fileName){
  if (!ownUnitsMap[itemCode]) ownUnitsMap[itemCode] = [];
  ownUnitsMap[itemCode].push({ serial, whcode, admissionDate: admDate.display, ts: admDate.ts, status });
  }
- } else if (status === 'Available'){
- // Cabang lain: hanya yang benar-benar Available dihitung untuk info indent
+ } else if (status === 'Available' || status === 'Allocated'){
+ // Cabang lain: Available maupun Allocated dihitung ke total (fisik kemungkinan masih ada di
+ // cabang itu, sama seperti perlakuan untuk gudang sendiri).
  if (!snMap[itemCode]) snMap[itemCode] = {};
  snMap[itemCode][whcode] = (snMap[itemCode][whcode] || 0) + 1;
+ // Simpan nomor SN-nya per cabang (dengan status), supaya bisa dilihat saat barang datang
+ if (serial){
+ if (!otherUnitsMap[itemCode]) otherUnitsMap[itemCode] = {};
+ if (!otherUnitsMap[itemCode][whcode]) otherUnitsMap[itemCode][whcode] = [];
+ otherUnitsMap[itemCode][whcode].push({ serial, admissionDate: admDate ? admDate.display : '', ts: admDate ? admDate.ts : 0, status });
  }
  }
  }
+ }
+ Object.keys(otherUnitsMap).forEach(code => {
+ Object.keys(otherUnitsMap[code]).forEach(wh => {
+ otherUnitsMap[code][wh].sort((a, b) => a.ts - b.ts);
+ });
+ });
 
  const serialIndex = {};
  Object.keys(ownUnitsMap).forEach(code => {
@@ -1041,6 +1106,7 @@ function buildCatalog(plRows, snRows, fileName){
  allocatedOwn: pl ? pl.totalAllocated : 0,
  others: mergeOthers(snOthers, stockAvailMap[code]),
  snOthers: snOthers,
+ otherUnits: otherUnitsMap[code] || null,
  ownUnits: ownUnitsMap[code] || null,
  inOwnList: !!pl
  });
@@ -1296,6 +1362,7 @@ function recomputeOthersWithStockAvail(){
  allocatedOwn: 0,
  others: stockAvailMap[code],
  snOthers: null,
+ otherUnits: null,
  ownUnits: null,
  inOwnList: false
  });
@@ -1340,129 +1407,92 @@ async function tryBuildCatalogFromPending(){
  }
 }
 
-plFileInput.addEventListener('change', function(e){
- const file = e.target.files[0];
- if (!file) return;
- setCheckBadge(plCheckBadge, 'loading', 'Memeriksa...');
- statusEl.textContent = `Membaca file Stock/Price List (${file.name})...`;
- ensureXlsxLoaded()
- .then(() => readSheetFile(file))
- .then(rows => {
- if (!validatePlRows(rows)){
- setCheckBadge(plCheckBadge, 'bad', `✗ Kolom tidak sesuai (${file.name})`);
- statusEl.textContent = `File "${file.name}" sepertinya bukan file Stock/Price List, coba periksa lagi (kolom "Item No.", "Available", "List Price" tidak ditemukan). Data lama tidak berubah.`;
- return;
- }
- setCheckBadge(plCheckBadge, 'ok', `✓ Kolom sesuai (${file.name})`);
+// Deteksi jenis file berdasarkan header-nya, lalu proses & simpan ke slot yang sesuai.
+// Return: nama slot ('pl'/'sn'/'stockavail'/'barcode') kalau dikenali, atau null kalau tidak.
+async function detectAndProcessFile(file){
+ const rows = await readSheetFile(file);
+
+ if (validatePlRows(rows)){
  pendingPlRows = rows;
  pendingPlName = file.name;
- statusEl.textContent = pendingSnRows ? 'File PL siap, menggabungkan dengan file SN...' : `File PL "${file.name}" siap. Menunggu file Serial Number...`;
- tryBuildCatalogFromPending();
- })
- .catch(err => {
- setCheckBadge(plCheckBadge, 'bad', `✗ Gagal dibaca (${file.name})`);
- statusEl.textContent = 'Gagal membaca file PL: ' + err.message;
- })
- .finally(() => { e.target.value = ''; });
-});
-
-snFileInput.addEventListener('change', function(e){
- const file = e.target.files[0];
- if (!file) return;
- setCheckBadge(snCheckBadge, 'loading', 'Memeriksa...');
- statusEl.textContent = `Membaca file Serial Number (${file.name})...`;
- ensureXlsxLoaded()
- .then(() => readSheetFile(file))
- .then(rows => {
- if (!validateSnRows(rows)){
- setCheckBadge(snCheckBadge, 'bad', `✗ Kolom tidak sesuai (${file.name})`);
- statusEl.textContent = `File "${file.name}" sepertinya bukan file Serial Number, coba periksa lagi (kolom "Serial Number", "Admission Date", "Status" tidak ditemukan). Data lama tidak berubah.`;
- return;
+ setCheckBadge(plCheckBadge, 'ok', `✓ ${file.name}`);
+ return 'pl';
  }
- setCheckBadge(snCheckBadge, 'ok', `✓ Kolom sesuai (${file.name})`);
+ if (validateSnRows(rows)){
  pendingSnRows = rows;
  pendingSnName = file.name;
- statusEl.textContent = pendingPlRows ? 'File SN siap, menggabungkan dengan file PL...' : `File SN "${file.name}" siap. Menunggu file Stock/Price List...`;
- tryBuildCatalogFromPending();
- })
- .catch(err => {
- setCheckBadge(snCheckBadge, 'bad', `✗ Gagal dibaca (${file.name})`);
- statusEl.textContent = 'Gagal membaca file SN: ' + err.message;
- })
- .finally(() => { e.target.value = ''; });
-});
-
-stockAvailFileInput.addEventListener('change', function(e){
- const file = e.target.files[0];
- if (!file) return;
- setCheckBadge(stockAvailCheckBadge, 'loading', 'Memeriksa...');
- statusEl.textContent = `Membaca file Stock Available (${file.name})... file besar, mohon tunggu.`;
- ensureXlsxLoaded()
- .then(() => readSheetFile(file))
- .then(rows => {
- if (!validateStockAvailRows(rows)){
- setCheckBadge(stockAvailCheckBadge, 'bad', `✗ Kolom tidak sesuai (${file.name})`);
- statusEl.textContent = `File "${file.name}" sepertinya bukan file Stock Available, coba periksa lagi (kolom "Warehouse Code", "Item No.", "Available" tidak ditemukan). Data lama tidak berubah.`;
- return;
+ setCheckBadge(snCheckBadge, 'ok', `✓ ${file.name}`);
+ return 'sn';
  }
+ if (validateStockAvailRows(rows)){
  const { map, descMap } = parseStockAvailRows(rows);
  stockAvailMap = map;
  stockAvailDesc = descMap;
  stockAvailMeta = { fileName: file.name, updatedAt: new Date().toISOString() };
- setCheckBadge(stockAvailCheckBadge, 'ok', `✓ Kolom sesuai (${file.name})`);
- statusEl.textContent = `Data Stock Available (${file.name}) berhasil diproses dan digabung ke status INDENT.`;
- stockAvailFileName.textContent = file.name;
- stockAvailInfo.style.display = 'flex';
+ setCheckBadge(stockAvailCheckBadge, 'ok', `✓ ${file.name}`);
  saveCatalogToCloud('stockavail:latest', { map: stockAvailMap, descMap: stockAvailDesc, meta: stockAvailMeta });
- recomputeOthersWithStockAvail();
- })
- .catch(err => {
- setCheckBadge(stockAvailCheckBadge, 'bad', `✗ Gagal dibaca (${file.name})`);
- statusEl.textContent = 'Gagal membaca file Stock Available: ' + err.message;
- })
- .finally(() => { e.target.value = ''; });
-});
-
-barcodeFileInput.addEventListener('change', function(e){
- const file = e.target.files[0];
- if (!file) return;
- setCheckBadge(barcodeCheckBadge, 'loading', 'Memeriksa...');
- statusEl.textContent = `Membaca file Data Barcode (${file.name})...`;
- ensureXlsxLoaded()
- .then(() => readSheetFile(file))
- .then(rows => {
- if (!validateBarcodeRows(rows)){
- setCheckBadge(barcodeCheckBadge, 'bad', `✗ Kolom tidak sesuai (${file.name})`);
- statusEl.textContent = `File "${file.name}" sepertinya bukan file Data Barcode, coba periksa lagi (kolom "Item No.", "Bar Code" tidak ditemukan). Data lama tidak berubah.`;
- return;
+ return 'stockavail';
  }
+ if (validateBarcodeRows(rows)){
  BARCODE_MAP = parseBarcodeRows(rows);
  getBarcodes._normIndex = null;
  barcodeMeta = { fileName: file.name, updatedAt: new Date().toISOString() };
- setCheckBadge(barcodeCheckBadge, 'ok', `✓ Kolom sesuai (${file.name})`);
- statusEl.textContent = `Data Barcode (${file.name}) berhasil diproses.`;
- barcodeFileName.textContent = file.name;
- barcodeInfo.style.display = 'flex';
+ setCheckBadge(barcodeCheckBadge, 'ok', `✓ ${file.name}`);
  saveCatalogToCloud('barcode:latest', { map: BARCODE_MAP, meta: barcodeMeta });
- if (searchInput.value.trim()) doSearch(); else renderEmpty();
- })
- .catch(err => {
- setCheckBadge(barcodeCheckBadge, 'bad', `✗ Gagal dibaca (${file.name})`);
- statusEl.textContent = 'Gagal membaca file Data Barcode: ' + err.message;
- })
- .finally(() => { e.target.value = ''; });
+ return 'barcode';
+ }
+ return null;
+}
+
+multiFileInput.addEventListener('change', async function(e){
+ const files = Array.from(e.target.files || []);
+ if (!files.length) return;
+
+ try {
+ await ensureXlsxLoaded();
+ } catch(err){
+ statusEl.textContent = err.message;
+ e.target.value = '';
+ return;
+ }
+
+ const okList = [];
+ const failList = [];
+ for (const file of files){
+ statusEl.textContent = `Memproses ${file.name}... (${okList.length + failList.length + 1}/${files.length})`;
+ try {
+ const type = await detectAndProcessFile(file);
+ if (type) okList.push(file.name);
+ else failList.push(`${file.name} (format tidak dikenali)`);
+ } catch(err){
+ failList.push(`${file.name} (gagal dibaca: ${err.message})`);
+ }
+ }
+
+ tryBuildCatalogFromPending();
+ recomputeOthersWithStockAvail();
+
+ if (failList.length){
+ statusEl.textContent = `${okList.length} file berhasil diproses. ${failList.length} file gagal/tidak dikenali: ${failList.join(', ')}`;
+ } else {
+ statusEl.textContent = `${okList.length} file berhasil diproses.`;
+ }
+ e.target.value = '';
 });
 
 document.getElementById('resetDataBtn').addEventListener('click', async function(){
  if (confirm('Apakah Anda yakin ingin menghapus data Stok/Harga di server? (Data Stock Opname Harian tidak terhapus)')) {
  try {
- await supabase.from('app_data').delete().eq('key', 'inventory:latest');
- } catch(e){}
+ const { error } = await supabase.from('app_data').delete().eq('key', 'inventory:latest');
+ if (error) console.error('Gagal menghapus data di server:', error.message);
+ } catch(e){ console.error(e); }
  localStorage.removeItem('inventory:latest');
  catalog = null;
  pendingPlRows = null; pendingSnRows = null; pendingPlName = null; pendingSnName = null;
  plCheckBadge.className = 'upload-check';
+ plCheckBadge.textContent = '';
  snCheckBadge.className = 'upload-check';
+ snCheckBadge.textContent = '';
  renderMeta();
  renderEmpty();
  statusEl.textContent = 'Data Stok/Harga berhasil dihapus dari server.';
@@ -1474,8 +1504,9 @@ document.getElementById('resetDataBtn').addEventListener('click', async function
 document.getElementById('resetSoBtn').addEventListener('click', async function(){
  if (confirm('Apakah Anda yakin ingin menghapus data Stock Opname Harian di server? (Data Stok/Harga tidak terhapus)')) {
  try {
- await supabase.from('app_data').delete().eq('key', 'so:latest');
- } catch(e){}
+ const { error } = await supabase.from('app_data').delete().eq('key', 'so:latest');
+ if (error) console.error('Gagal menghapus data SO di server:', error.message);
+ } catch(e){ console.error(e); }
  localStorage.removeItem('so:latest');
  soData = null;
  renderSoModules();
@@ -1512,9 +1543,30 @@ function renderBranchesToggle(it){
  let listHtml = '';
  if (isOpen){
  const sorted = Object.entries(it.others).sort((a,b) => b[1]-a[1]);
- listHtml = '<div class="branch-list">' + sorted.map(([wh,qty]) => `
- <div class="branch-row"><span>${escapeHtml(wh)}</span><span>${qty} pcs</span></div>
+ listHtml = '<div class="branch-list">' + sorted.map(([wh,qty]) => {
+ const bKey = it.code + '::' + wh;
+ const branchOpen = openBranchUnits.has(bKey);
+ const units = (it.otherUnits && it.otherUnits[wh]) || [];
+ let unitsHtml = '';
+ if (branchOpen){
+ if (units.length){
+ unitsHtml = '<div class="fifo-list">' + units.map((u, idx) => `
+ <div class="fifo-row${idx === 0 ? ' first' : ''}">
+ <span>${idx === 0 ? '➜ ' : ''}${escapeHtml(u.serial)}${u.status === 'Allocated' ? ' <span class="badge-mini">Allocated</span>' : ''}</span>
+ <span>${escapeHtml(u.admissionDate)}</span>
+ </div>
  `).join('') + '</div>';
+ } else {
+ unitsHtml = '<div class="fifo-list"><div class="fifo-more">Nomor SN untuk cabang ini tidak tersedia (bukan dari data per-unit).</div></div>';
+ }
+ }
+ return `<div class="branch-unit-wrap">
+ <button class="branch-unit-toggle" data-code="${escapeHtml(it.code)}" data-wh="${escapeHtml(wh)}">
+ <span>${escapeHtml(wh)}</span><span>${qty} pcs</span>
+ </button>
+ ${unitsHtml}
+ </div>`;
+ }).join('') + '</div>';
  }
  return `<button class="branch-toggle" data-code="${escapeHtml(it.code)}">${label}</button>${listHtml}`;
 }
@@ -1552,6 +1604,15 @@ function renderItem(it){
 }
 
 resultsEl.addEventListener('click', function(e){
+ const branchUnitBtn = e.target.closest('.branch-unit-toggle');
+ if (branchUnitBtn){
+ const code = branchUnitBtn.getAttribute('data-code');
+ const wh = branchUnitBtn.getAttribute('data-wh');
+ const key = code + '::' + wh;
+ if (openBranchUnits.has(key)) openBranchUnits.delete(key); else openBranchUnits.add(key);
+ doSearch();
+ return;
+ }
  const fifoBtn = e.target.closest('.fifo-toggle');
  if (fifoBtn){
  const code = fifoBtn.getAttribute('data-code');
@@ -1646,24 +1707,18 @@ setInterval(updateStaleBanner, 60000);
 // Cek pembaruan dari pengguna lain secara berkala, agar sesi yang sudah terbuka
 // ikut ter-update tanpa perlu reload manual saat ada yang upload data baru.
 setInterval(async function(){
- try{
- const { data: invData } = await supabase
- .from('app_data').select('payload').eq('key', 'inventory:latest').single();
- if (invData && invData.payload && (!catalog || invData.payload.updatedAt !== catalog.updatedAt)){
- catalog = invData.payload;
+ const inv = await fetchLatestPayload('inventory:latest');
+ if (inv.payload && (!catalog || inv.payload.updatedAt !== catalog.updatedAt)){
+ catalog = inv.payload;
  renderMeta();
  if (searchInput.value.trim()) doSearch(); else renderEmpty();
  }
- }catch(e){}
 
- try{
- const { data: soDbData } = await supabase
- .from('app_data').select('payload').eq('key', 'so:latest').single();
- if (soDbData && soDbData.payload && (!soData || soDbData.payload.updatedAt !== soData.updatedAt)){
- soData = soDbData.payload;
+ const so = await fetchLatestPayload('so:latest');
+ if (so.payload && (!soData || so.payload.updatedAt !== soData.updatedAt)){
+ soData = so.payload;
  if (staffMode) renderSoModules();
  }
- }catch(e){}
 }, 20000);
 }catch(e){ window.__showError(e.message); }
 </script>
