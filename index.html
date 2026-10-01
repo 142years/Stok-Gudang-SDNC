@@ -564,6 +564,10 @@
  <span class="upload-status-label">Data Barcode</span>
  <span id="barcodeCheckBadge" class="upload-check"></span>
  </div>
+ <div class="upload-status-item">
+ <span class="upload-status-label">Price List Manual</span>
+ <span id="manualPriceCheckBadge" class="upload-check"></span>
+ </div>
  </div>
  </div>
 
@@ -732,6 +736,45 @@ const plCheckBadge = document.getElementById('plCheckBadge');
 const snCheckBadge = document.getElementById('snCheckBadge');
 const stockAvailCheckBadge = document.getElementById('stockAvailCheckBadge');
 const barcodeCheckBadge = document.getElementById('barcodeCheckBadge');
+const manualPriceCheckBadge = document.getElementById('manualPriceCheckBadge');
+
+// ===== Price List Manual =====
+// Sumber: file "Manual Serial Number / ACC / PriceList" (kolom: #, Item Description, Barcode/Imei, Price, WhsCode).
+// Fungsinya melengkapi harga barang yang TIDAK punya harga di Price List utama (umumnya barang INDENT
+// dari cabang lain). Harga dari Price List utama TIDAK PERNAH ditimpa — file ini hanya mengisi yang kosong.
+// Disimpan ringkas (satu harga per deskripsi / barcode), bukan 96 ribu baris mentah.
+let MANUAL_PRICE = { byDesc: {}, byBarcode: {} };
+let manualPriceMeta = null; // { fileName, updatedAt, products, rows }
+
+function normDesc(s){
+ return String(s || '').toUpperCase().replace(/\s+/g, ' ').trim();
+}
+
+// Return { price, source } -> source: 'pl' (Price List utama) | 'manual' | null
+function getEffectivePrice(it){
+ if (it && Number(it.price) > 0) return { price: Number(it.price), source: 'pl' };
+ const m = lookupManualPrice(it);
+ if (m) return { price: m, source: 'manual' };
+ return { price: (it && it.price !== undefined) ? it.price : null, source: null };
+}
+
+function lookupManualPrice(it, store){
+ if (!it) return null;
+ const mp = store || MANUAL_PRICE;
+ // 1) lewat barcode kode barang (paling presisi), 2) lewat deskripsi persis
+ const bcs = getBarcodes(it.code);
+ if (bcs){
+  for (const b of bcs){
+   const p = mp.byBarcode && mp.byBarcode[String(b).trim()];
+   if (p > 0) return p;
+  }
+ }
+ if (it.desc && it.desc !== '(tanpa nama)'){
+  const p = mp.byDesc && mp.byDesc[normDesc(it.desc)];
+  if (p > 0) return p;
+ }
+ return null;
+}
 
 function setCheckBadge(el, state, text){
  el.className = 'upload-check show ' + state; // state: 'ok' | 'bad' | 'loading'
@@ -942,6 +985,22 @@ async function loadCatalog(){
  }catch(e){}
  }
 
+ const manual = await fetchLatestPayload('manualprice:latest');
+ if (manual.payload){
+ MANUAL_PRICE = { byDesc: manual.payload.byDesc || {}, byBarcode: manual.payload.byBarcode || {} };
+ manualPriceMeta = manual.payload.meta || null;
+ } else {
+ if (!manual.ok) cloudErrors.push(`Price List Manual: ${manual.message}`);
+ try {
+ const res = localStorage.getItem('manualprice:latest');
+ if (res){
+ const parsedM = JSON.parse(res);
+ MANUAL_PRICE = { byDesc: parsedM.byDesc || {}, byBarcode: parsedM.byBarcode || {} };
+ manualPriceMeta = parsedM.meta || null;
+ }
+ }catch(e){}
+ }
+
  if (cloudErrors.length){
  console.error('Sebagian data gagal dimuat dari server (dipakai cadangan lokal):', cloudErrors);
  statusEl.textContent = `⚠ Gagal memuat dari server, dipakai data lokal perangkat ini: ${cloudErrors.join(' | ')}`;
@@ -949,6 +1008,7 @@ async function loadCatalog(){
 
  recomputeOthersWithStockAvail();
  renderMeta();
+ refreshUploadBadges();
  renderEmpty();
  if (staffMode) renderSoModules();
 }
@@ -1014,6 +1074,35 @@ function updateStaleBanner(){
  } else {
  staleBanner.classList.add('show');
  }
+}
+
+// Tampilkan badge "✓ nama file" dari data yang tersimpan (cloud/lokal), bukan hanya saat upload.
+// Dipanggil saat data dimuat, supaya status tetap terlihat setelah refresh dan di device lain.
+function badgeFromMeta(el, name, updatedAt){
+ if (!name){
+  el.className = 'upload-check';
+  el.textContent = '';
+  el.title = '';
+  return;
+ }
+ setCheckBadge(el, 'ok', `✓ ${name}`);
+ const d = updatedAt ? new Date(updatedAt) : null;
+ el.title = (d && !isNaN(d.getTime())) ? 'Diupload ' + d.toLocaleString('id-ID', {dateStyle:'medium', timeStyle:'short'}) : '';
+}
+
+function refreshUploadBadges(){
+ let plName = pendingPlName || null, snName = pendingSnName || null;
+ if (catalog && catalog.fileName){
+  const parts = String(catalog.fileName).split(' + ');
+  if (!plName) plName = parts[0] || null;
+  if (!snName) snName = parts.length > 1 ? parts.slice(1).join(' + ') : parts[0];
+ }
+ const when = catalog ? catalog.updatedAt : null;
+ badgeFromMeta(plCheckBadge, plName, when);
+ badgeFromMeta(snCheckBadge, snName, when);
+ badgeFromMeta(stockAvailCheckBadge, stockAvailMeta && stockAvailMeta.fileName, stockAvailMeta && stockAvailMeta.updatedAt);
+ badgeFromMeta(barcodeCheckBadge, barcodeMeta && barcodeMeta.fileName, barcodeMeta && barcodeMeta.updatedAt);
+ badgeFromMeta(manualPriceCheckBadge, manualPriceMeta && manualPriceMeta.fileName, manualPriceMeta && manualPriceMeta.updatedAt);
 }
 
 function renderMeta(){
@@ -1486,6 +1575,76 @@ function parseBarcodeRows(rows){
  return map;
 }
 
+function validateManualPriceRows(rows){
+ return rows && rows.length > 0 && headerContainsAll(rows[0], ['item description', 'barcode/imei', 'price']);
+}
+
+// Kolom: #, Item Description, Barcode/Imei, Price, WhsCode
+// Satu harga per deskripsi = harga yang paling sering muncul (abaikan harga 0 / kosong).
+function parseManualPriceRows(rows){
+ const descCount = {};   // { DESC: { harga: jumlah } }
+ const bcCount = {};     // { barcode: { harga: jumlah } }
+ let used = 0;
+ for (let i = 1; i < rows.length; i++){
+  const r = rows[i];
+  if (!r || !r[1]) continue;
+  const price = Number(r[3]);
+  if (!(price > 0)) continue;
+  used++;
+  const d = normDesc(r[1]);
+  (descCount[d] = descCount[d] || {})[price] = ((descCount[d] || {})[price] || 0) + 1;
+  // "barcode-serial" -> ambil barcode-nya saja. Baris tanpa tanda "-" hanya IMEI/serial/barcode tunggal, tidak dipakai sebagai kunci.
+  const raw = r[2] ? String(r[2]).trim() : '';
+  const dash = raw.indexOf('-');
+  if (dash > 0){
+   const bc = raw.slice(0, dash).trim();
+   if (/^\d{6,}$/.test(bc)) (bcCount[bc] = bcCount[bc] || {})[price] = ((bcCount[bc] || {})[price] || 0) + 1;
+  }
+ }
+ function pickMode(counts){
+  let best = null, bestN = -1;
+  Object.keys(counts).forEach(p => {
+   const n = counts[p];
+   if (n > bestN || (n === bestN && Number(p) > best)){ best = Number(p); bestN = n; }
+  });
+  return best;
+ }
+ const byDesc = {}, byBarcode = {};
+ let ambiguous = 0;
+ Object.keys(descCount).forEach(d => {
+  byDesc[d] = pickMode(descCount[d]);
+  if (Object.keys(descCount[d]).length > 1) ambiguous++;
+ });
+ Object.keys(bcCount).forEach(b => { byBarcode[b] = pickMode(bcCount[b]); });
+ return { byDesc, byBarcode, ambiguous, rows: used };
+}
+
+// Bandingkan harga file manual dengan Price List utama yang sudah ada di catalog:
+//  - comparable: barang yang punya harga di PL utama DAN di file manual
+//  - match / mismatch: harga sama / beda
+//  - fill: barang TANPA harga di PL utama yang sekarang bisa terisi dari file manual
+//  - stillMissing: barang tanpa harga di PL utama dan tetap tidak ada di file manual
+function reconcileManualPrices(parsed){
+ const store = { byDesc: parsed.byDesc, byBarcode: parsed.byBarcode };
+ const res = { comparable: 0, match: 0, mismatch: 0, fill: 0, stillMissing: 0, samples: [], hasCatalog: !!(catalog && catalog.items) };
+ if (!res.hasCatalog) return res;
+ catalog.items.forEach(it => {
+  const m = lookupManualPrice(it, store);
+  if (Number(it.price) > 0){
+   if (m){
+    res.comparable++;
+    if (Math.round(m) === Math.round(Number(it.price))) res.match++;
+    else {
+     res.mismatch++;
+     if (res.samples.length < 3) res.samples.push(`${it.desc}: PL ${fmtRupiah(it.price)} vs manual ${fmtRupiah(m)}`);
+    }
+   }
+  } else if (m) res.fill++;
+  else res.stillMissing++;
+ });
+ return res;
+}
+
 // Gabungkan hasil deteksi cabang lain dari SN dengan data Stock Available.
 // Kalau ada cabang yang sama muncul di keduanya, nilai dari Stock Available yang dipakai
 // (dianggap lebih lengkap/terbaru), sisanya digabung (union).
@@ -1604,6 +1763,33 @@ async function detectAndProcessFile(file){
  }
  return { type: 'barcode', ok: result.ok, message: result.message };
  }
+ if (validateManualPriceRows(rows)){
+  setCheckBadge(manualPriceCheckBadge, 'loading', 'Mencocokkan dengan Price List...');
+  const parsed = parseManualPriceRows(rows);
+  const rec = reconcileManualPrices(parsed);
+  const ratio = rec.comparable ? rec.match / rec.comparable : 1;
+  const MIN_COMPARABLE = 20, MIN_RATIO = 0.9;
+  const summary = rec.hasCatalog
+   ? `${rec.match}/${rec.comparable} harga sama dengan Price List, ${rec.fill} barang tanpa harga bisa terisi, ${rec.stillMissing} masih kosong`
+   : 'belum ada data Price List untuk dibandingkan';
+  // Tidak sesuai -> jangan dipakai sama sekali
+  if (rec.comparable >= MIN_COMPARABLE && ratio < MIN_RATIO){
+   const msg = `Harga tidak sesuai Price List (${rec.match}/${rec.comparable} sama). Contoh: ${rec.samples.join(' | ')}`;
+   setCheckBadge(manualPriceCheckBadge, 'bad', `✗ ${msg}`);
+   return { type: 'manualprice', ok: false, message: msg };
+  }
+  MANUAL_PRICE = { byDesc: parsed.byDesc, byBarcode: parsed.byBarcode };
+  manualPriceMeta = { fileName: file.name, updatedAt: new Date().toISOString(), products: Object.keys(parsed.byDesc).length, rows: parsed.rows };
+  setCheckBadge(manualPriceCheckBadge, 'loading', 'Menyimpan ke server...');
+  const result = await saveCatalogToCloud('manualprice:latest', { byDesc: MANUAL_PRICE.byDesc, byBarcode: MANUAL_PRICE.byBarcode, meta: manualPriceMeta });
+  if (result.ok){
+   setCheckBadge(manualPriceCheckBadge, 'ok', `✓ ${file.name}`);
+   manualPriceCheckBadge.title = summary;
+  } else {
+   setCheckBadge(manualPriceCheckBadge, 'bad', `✗ Gagal simpan ke server: ${result.message}`);
+  }
+  return { type: 'manualprice', ok: result.ok, message: result.message || '', summary };
+ }
  return { type: null, ok: false };
 }
 
@@ -1627,7 +1813,7 @@ multiFileInput.addEventListener('change', async function(e){
  const result = await detectAndProcessFile(file);
  if (!result.type) failList.push(`${file.name} (format tidak dikenali)`);
  else if (!result.ok) failList.push(`${file.name} (${result.message || 'gagal simpan ke server'})`);
- else okList.push(file.name);
+ else okList.push(result.summary ? `${file.name} (${result.summary})` : file.name);
  } catch(err){
  failList.push(`${file.name} (gagal dibaca: ${err.message})`);
  }
@@ -1666,8 +1852,10 @@ document.getElementById('resetDataBtn').addEventListener('click', async function
  pendingPlRows = null; pendingSnRows = null; pendingPlName = null; pendingSnName = null;
  plCheckBadge.className = 'upload-check';
  plCheckBadge.textContent = '';
+ plCheckBadge.title = '';
  snCheckBadge.className = 'upload-check';
  snCheckBadge.textContent = '';
+ snCheckBadge.title = '';
  renderMeta();
  renderEmpty();
  statusEl.textContent = 'Data Stok/Harga berhasil dihapus dari server.';
@@ -1747,7 +1935,10 @@ function renderBranchesToggle(it){
 }
 
 function renderItem(it){
- const priceStr = fmtRupiah(it.price);
+ const eff = getEffectivePrice(it);
+ const priceStr = fmtRupiah(eff.price);
+ const priceNote = eff.source === 'manual'
+  ? '<div style="font-size:11px; color:var(--muted); margin-top:2px;">Harga dari price list manual (belum ada di Price List utama)</div>' : '';
  let statusHtml;
  let isIndent = false;
  const readyCount = (it.available || 0) + (it.allocatedOwn || 0);
@@ -1773,6 +1964,7 @@ function renderItem(it){
  <div class="card-code">${escapeHtml(it.code)}</div>
  ${barcodeHtml}
  <div class="card-row"><span class="price">${priceStr}</span>${statusHtml}</div>
+ ${priceNote}
  ${isIndent ? renderBranchesToggle(it) : ''}
  ${renderFifoList(it)}
  </div>`;
@@ -1863,7 +2055,7 @@ function doVerify(){
  return;
  }
  const itemLine = `${escapeHtml(hit.desc)} <span style="color:var(--muted)">(${escapeHtml(hit.code)})</span>`;
- const priceDisplay = `Harga: <b style="color:var(--text);">${fmtRupiah(hit.price)}</b>`;
+ const priceDisplay = `Harga: <b style="color:var(--text);">${fmtRupiah(getEffectivePrice({ code: hit.code, desc: hit.desc, price: hit.price }).price)}</b>`;
 
  const allocWarn = hit.status === 'Allocated' ? '<br/><span class="verify-warn">⚠ Status: Allocated — minta cancel alokasi di sistem SAP dulu sebelum dijual ke customer.</span>' : '';
  if (hit.rank === 0){
@@ -1886,6 +2078,7 @@ setInterval(async function(){
  if (inv.payload && (!catalog || inv.payload.updatedAt !== catalog.updatedAt)){
  catalog = inv.payload;
  renderMeta();
+ refreshUploadBadges();
  if (searchInput.value.trim()) doSearch(); else renderEmpty();
  }
 
