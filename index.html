@@ -2,27 +2,68 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#181B22" />
+<script>
+(function(){
+  var t = null;
+  try { t = localStorage.getItem('theme'); } catch(e){}
+  if (t !== 'light' && t !== 'dark'){
+    t = (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
 <title>Cek Harga & Stok</title>
 <!-- Pustaka Supabase Client untuk sinkronisasi cloud -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
  :root{
- --bg:#181B22;
- --panel:#20242D;
- --panel-2:#262B35;
- --line:#323744;
- --text:#EDEFF3;
- --muted:#8B92A3;
- --ready:#34B37A;
- --ready-bg:#1B3329;
- --indent:#E2A63B;
- --indent-bg:#332A15;
- --out:#C15B4A;
- --out-bg:#301E1C;
- --staff:#5A8DEE;
- --staff-bg:#182238;
+  color-scheme:dark;
+  --bg:#181B22;
+  --panel:#20242D;
+  --panel-2:#262B35;
+  --panel-3:#2E3440;
+  --line:#323744;
+  --text:#EDEFF3;
+  --muted:#8B92A3;
+  --ready:#34B37A;
+  --ready-bg:#1B3329;
+  --indent:#E2A63B;
+  --indent-bg:#332A15;
+  --out:#C15B4A;
+  --out-bg:#301E1C;
+  --staff:#5A8DEE;
+  --staff-bg:#182238;
+  --focus:#4A5468;
+  --on-staff:#0B0D12;
+  --overlay:rgba(10,11,15,0.78);
+  --so-list-h:clamp(220px, calc(100vh - 360px), 560px);
  }
+ @supports (height:100dvh){ :root{ --so-list-h:clamp(220px, calc(100dvh - 360px), 560px); } }
+ :root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#F3F5F9;
+  --panel:#FFFFFF;
+  --panel-2:#EDF0F5;
+  --panel-3:#E1E6EE;
+  --line:#D5DBE5;
+  --text:#1A1F2B;
+  --muted:#5B6478;
+  --ready:#16794A;
+  --ready-bg:#E0F4EA;
+  --indent:#8F5C00;
+  --indent-bg:#FCF0D6;
+  --out:#B03A2A;
+  --out-bg:#FCE6E1;
+  --staff:#2455C3;
+  --staff-bg:#E5EDFD;
+  --focus:#8895AE;
+  --on-staff:#FFFFFF;
+  --overlay:rgba(20,28,45,0.45);
+ }
+ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+ html.theme-anim *{transition:background-color .25s ease,color .25s ease,border-color .25s ease !important;}
  *{box-sizing:border-box;}
  html,body{margin:0;padding:0;}
  body{
@@ -128,7 +169,7 @@
  cursor:pointer;
  user-select:none;
  }
- .upload-btn:active{background:#2E3440;}
+ .upload-btn:active{background:var(--panel-3);}
  .upload-btn.primary{
  background:var(--staff-bg);
  border-color:var(--staff);
@@ -153,7 +194,7 @@
  #uploadStatus{font-size:12.5px;color:var(--muted); width:100%; min-height:1em;}
  .upload-status-grid{
  display:grid;
- grid-template-columns:1fr 1fr;
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));
  gap:6px 10px;
  width:100%;
  }
@@ -225,7 +266,7 @@
  display:none;
  position:fixed;
  inset:0;
- background:rgba(10,11,15,0.8);
+ background:var(--overlay);
  z-index:100;
  align-items:center;
  justify-content:center;
@@ -295,7 +336,7 @@
  border-radius:10px;
  outline:none;
  }
- #searchInput:focus{border-color:#4A5468;}
+ #searchInput:focus{border-color:var(--focus);}
  #searchInput::placeholder{color:var(--muted);}
  #results{padding:10px 16px 0;}
  .empty{
@@ -449,7 +490,7 @@
  display:none;
  position:fixed;
  inset:0;
- background:rgba(10,11,15,0.72);
+ background:var(--overlay);
  align-items:center;
  justify-content:center;
  z-index:50;
@@ -490,40 +531,134 @@
  border:1px solid var(--line);
  }
  .pin-btn.ghost{background:transparent;color:var(--muted);}
- .pin-btn.solid{background:var(--staff);color:#0B0D12;border-color:var(--staff);}
+ .pin-btn.solid{background:var(--staff);color:var(--on-staff);border-color:var(--staff);}
+ .pin-btn.danger{background:var(--out-bg);color:var(--out);border-color:var(--out);}
 
- /* Responsive: HP kecil */
- @media (max-width:380px){
- header{padding:16px 12px 10px;}
- header h1{font-size:19px;}
- .upload-btn{padding:8px 10px;font-size:13px;}
- #staffToggle{padding:7px 9px;font-size:11.5px;min-height:34px;}
- .search-wrap{padding:12px;}
- #results{padding:8px 12px 0;}
- .card{padding:11px 12px;}
- }
+ /* ===== Responsif: HP, tablet (iPad), laptop, layar lebar ===== */
  #staffToggle, .upload-btn, .pin-btn, .so-tab{min-height:36px;display:inline-flex;align-items:center;justify-content:center;}
  .file-info-badge{min-height:0;}
+ :focus-visible{outline:2px solid var(--staff);outline-offset:2px;}
 
- /* Responsive: Tablet & Desktop — lebar lebih besar, hasil pencarian jadi grid multi-kolom */
- @media (min-width:700px){
- #app{max-width:900px;}
- header{padding:24px 20px 14px;}
- .search-wrap{padding:16px 20px;}
- #results{
- padding:12px 20px 0;
- display:grid;
- grid-template-columns:repeat(2, 1fr);
- gap:12px;
- align-items:start;
+ #app{
+  max-width:1480px;
+  padding-left:env(safe-area-inset-left);
+  padding-right:env(safe-area-inset-right);
+  padding-bottom:calc(48px + env(safe-area-inset-bottom));
  }
- #results .empty{grid-column:1 / -1;}
- .card{margin-bottom:0;}
- #uploadSection, #verifySection, #soLauncherSection{padding-left:20px;padding-right:20px;}
+ header{padding-top:calc(20px + env(safe-area-inset-top));flex-wrap:wrap;}
+ header > div:first-child{min-width:0;flex:1 1 200px;}
+ #metaDetail{overflow-wrap:anywhere;}
+ .header-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+ #themeToggle{
+  width:38px;height:38px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:9px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--muted);
+  cursor:pointer;
  }
- @media (min-width:1000px){
- #app{max-width:1180px;}
- #results{grid-template-columns:repeat(3, 1fr);}
+ #themeToggle svg{width:19px;height:19px;}
+ #themeToggle:hover{color:var(--text);}
+ :root[data-theme="dark"] #themeToggle .i-moon{display:none;}
+ :root[data-theme="light"] #themeToggle .i-sun{display:none;}
+
+ .upload-status-item{min-width:0;flex-wrap:wrap;}
+ .upload-status-item .upload-check{max-width:62%;overflow:hidden;text-overflow:ellipsis;}
+ .upload-status-item .upload-check.bad{max-width:100%;white-space:normal;overflow:visible;}
+ .card{overflow-wrap:anywhere;}
+ .card-row{min-width:0;}
+
+ #soModalBox{max-height:calc(100vh - 32px);}
+ @supports (height:100dvh){ #soModalBox{max-height:calc(100dvh - 32px);} }
+ #soGadgetList > div > div:first-child,
+ #soAccContainer > div > div:first-child,
+ #soItrContainer > div > div:first-child{min-width:0;overflow-wrap:anywhere;}
+
+ #deleteOverlay{
+  display:none;position:fixed;inset:0;background:var(--overlay);
+  align-items:center;justify-content:center;z-index:60;padding:20px;
+ }
+ #deleteOverlay.show{display:flex;}
+ #deleteBox{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:20px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;
+ }
+ .delete-hint{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:12px;}
+ .delete-opt{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:10px 12px;margin-bottom:8px;
+  border:1px solid var(--line);border-radius:9px;background:var(--bg);
+  cursor:pointer;min-height:44px;
+ }
+ .delete-opt input{margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--out);}
+ .delete-opt span{display:flex;flex-direction:column;gap:2px;font-size:13.5px;}
+ .delete-opt small{font-size:11.5px;color:var(--muted);}
+ #deleteMsg{font-size:12.5px;line-height:1.5;white-space:pre-line;min-height:18px;margin:4px 0 8px;color:var(--muted);overflow-wrap:anywhere;}
+ #deleteMsg.err{color:var(--out);}
+ #deleteMsg.ok{color:var(--ready);}
+
+ /* Hover hanya untuk perangkat dengan mouse */
+ @media (hover:hover){
+  .upload-btn:hover, #staffToggle:hover, .so-tab:hover{border-color:var(--focus);}
+  .card:hover{border-color:var(--focus);}
+ }
+ /* Layar sentuh: area ketuk lebih besar */
+ @media (pointer:coarse){
+  #staffToggle, .upload-btn, .pin-btn, .so-tab{min-height:44px;}
+  #themeToggle{width:44px;height:44px;}
+  .fifo-toggle, .branch-toggle{min-height:40px;}
+  .branch-unit-toggle{min-height:36px;}
+ }
+ /* Input >= 16px di HP & tablet: iOS tidak lagi zoom otomatis saat mengetik */
+ @media (max-width:1024px){
+  #verifyInput, #pinInput{font-size:16px;}
+  #soModalBody input[type="text"], #soModalBody select{font-size:16px !important;}
+ }
+
+ /* HP kecil */
+ @media (max-width:380px){
+  header{padding-left:12px;padding-right:12px;padding-bottom:10px;}
+  header h1{font-size:19px;}
+  .upload-btn{padding:8px 10px;font-size:13px;}
+  .search-wrap{padding:12px;}
+  #results{padding:8px 12px 0;}
+  .card{padding:11px 12px;}
+  #uploadSection, #verifySection, #soLauncherSection{padding-left:12px;padding-right:12px;}
+ }
+ /* HP: tombol upload & hapus selebar layar, SO tampil sebagai lembar dari bawah */
+ @media (max-width:560px){
+  .upload-btn.primary{min-width:100%;}
+  #resetDataBtn{flex:1;}
+  #soModalOverlay{align-items:flex-end;padding:0;}
+  #soModalBox{max-width:none;border-radius:14px 14px 0 0;max-height:92vh;padding-bottom:env(safe-area-inset-bottom);}
+  @supports (height:100dvh){ #soModalBox{max-height:92dvh;} }
+  #soLauncherSection.show{flex-wrap:wrap;gap:8px;}
+ }
+ /* Tablet portrait & HP landscape lebar: hasil jadi grid, jumlah kolom menyesuaikan lebar */
+ @media (min-width:600px){
+  header{padding-left:20px;padding-right:20px;padding-bottom:14px;}
+  .search-wrap{padding:16px 20px;}
+  #results{
+   padding:12px 20px 0;
+   display:grid;
+   grid-template-columns:repeat(auto-fill, minmax(290px, 1fr));
+   gap:12px;
+   align-items:start;
+  }
+  #results .empty{grid-column:1 / -1;}
+  .card{margin-bottom:0;}
+  #uploadSection, #verifySection, #soLauncherSection{padding-left:20px;padding-right:20px;}
+ }
+ /* Laptop / desktop: modal SO lebih lega */
+ @media (min-width:900px){
+  #soModalBox{max-width:760px;}
+  header h1{font-size:24px;}
+ }
+ /* Layar sangat lebar: sedikit lebih renggang */
+ @media (min-width:1400px){
+  #results{grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:14px;}
+ }
+ @media (prefers-reduced-motion:reduce){
+  html.theme-anim *{transition:none !important;}
  }
 </style>
 </head>
@@ -537,7 +672,13 @@
  <div id="metaDetail">Memuat data dari server...</div>
  </div>
  </div>
- <button id="staffToggle">Staff Gudang</button>
+ <div class="header-actions">
+ <button id="themeToggle" type="button" aria-label="Ganti ke mode terang" title="Ganti ke mode terang">
+ <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+ <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+ </button>
+ <button id="staffToggle" type="button">Staff Gudang</button>
+ </div>
  </header>
 
  <div id="uploadSection">
@@ -617,7 +758,7 @@
  <span>Daftar Checklist HP</span>
  <span id="soGadgetStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
  </div>
- <div id="soGadgetList" style="max-height:260px; overflow-y:auto; font-size:12px;"></div>
+ <div id="soGadgetList" style="max-height:var(--so-list-h); overflow-y:auto; font-size:12px;"></div>
  </div>
 
  <!-- Tab 2: Aksesoris -->
@@ -629,7 +770,7 @@
  <span>Rekonsiliasi Stok ACC</span>
  <span id="soAccStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
  </div>
- <div id="soAccContainer" style="max-height:260px; overflow-y:auto;"></div>
+ <div id="soAccContainer" style="max-height:var(--so-list-h); overflow-y:auto;"></div>
  </div>
 
  <!-- Tab 3: ITR Gantung -->
@@ -639,7 +780,7 @@
  <span>Daftar Dokumen ITR</span>
  <span id="soItrStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
  </div>
- <div id="soItrContainer" style="max-height:260px; overflow-y:auto;"></div>
+ <div id="soItrContainer" style="max-height:var(--so-list-h); overflow-y:auto;"></div>
  </div>
  </div>
  </div>
@@ -650,6 +791,22 @@
  </div>
  <div id="results"></div>
  <div class="note" id="footNote"></div>
+
+ <div id="deleteOverlay">
+ <div id="deleteBox" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+ <div class="pin-label" id="deleteTitle">Hapus data di server</div>
+ <div class="delete-hint">Pilih data yang mau dihapus. Penghapusan berlaku untuk semua perangkat. Data Stock Opname Harian tidak ikut terhapus (hapus lewat menu Stock Opname).</div>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="stock" checked /><span><b>Stok &amp; Harga</b><small>Price List + Serial Number</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="avail" /><span><b>Stock Available</b><small>Stok cabang lain</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="barcode" /><span><b>Data Barcode</b><small>Barcode per kode barang</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="manual" /><span><b>Price List Manual</b><small>Harga tambahan untuk barang indent</small></span></label>
+ <div id="deleteMsg" role="status"></div>
+ <div class="pin-actions">
+ <button id="deleteCancel" type="button" class="pin-btn ghost">Tutup</button>
+ <button id="deleteConfirm" type="button" class="pin-btn danger">Hapus</button>
+ </div>
+ </div>
+ </div>
 
  <div id="pinOverlay">
  <div id="pinBox">
@@ -664,6 +821,41 @@
  </div>
 </div>
 
+<script>
+(function(){
+  var root = document.documentElement;
+  var btn = document.getElementById('themeToggle');
+  var meta = document.querySelector('meta[name="theme-color"]');
+  function paint(t){
+    root.setAttribute('data-theme', t);
+    if (meta) meta.setAttribute('content', t === 'light' ? '#F3F5F9' : '#181B22');
+    if (btn){
+      var label = t === 'light' ? 'Ganti ke mode gelap' : 'Ganti ke mode terang';
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+    }
+  }
+  paint(root.getAttribute('data-theme') || 'dark');
+  if (btn) btn.addEventListener('click', function(){
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.classList.add('theme-anim');
+    paint(next);
+    try { localStorage.setItem('theme', next); } catch(e){}
+    setTimeout(function(){ root.classList.remove('theme-anim'); }, 350);
+  });
+  // Selama belum memilih manual, ikuti pengaturan terang/gelap perangkat
+  if (window.matchMedia){
+    var mq = matchMedia('(prefers-color-scheme: light)');
+    var onChange = function(e){
+      var saved = null;
+      try { saved = localStorage.getItem('theme'); } catch(_){}
+      if (!saved) paint(e.matches ? 'light' : 'dark');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
+})();
+</script>
 <script>
 (function(){
  function showError(msg){
@@ -932,78 +1124,59 @@ async function fetchLatestPayload(key){
 // Load data dari Supabase Cloud agar bisa diakses semua device.
 // Tiap key dimuat independen — kalau salah satu gagal (atau belum ada datanya),
 // yang lain tetap lanjut dimuat normal.
+function readLocalJson(key){
+ try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : null; } catch(e){ return null; }
+}
+
+// Tentukan data mana yang dipakai untuk satu key:
+//  - ada di server            -> pakai server
+//  - server error/tak terjangkau -> pakai salinan lokal (cadangan)
+//  - server terjangkau & kosong  -> kalau pernah tersinkron & tidak ada simpanan gagal = sudah dihapus,
+//                                   buang salinan lokal; selain itu pertahankan salinan lokal
+function resolvePayload(key, res, label, cloudErrors, notes){
+ if (res.payload){ markSynced(key); return res.payload; }
+ if (!res.ok){
+  cloudErrors.push(`${label}: ${res.message}`);
+  return readLocalJson(key);
+ }
+ if (isSynced(key) && !isUnsynced(key)){
+  clearLocalKey(key);
+  return null;
+ }
+ const local = readLocalJson(key);
+ if (local && isUnsynced(key)) notes.push(label);
+ return local;
+}
+
+// Load data dari Supabase Cloud agar bisa diakses semua device.
+// Tiap key dimuat independen — kalau salah satu gagal (atau belum ada datanya),
+// yang lain tetap lanjut dimuat normal.
 async function loadCatalog(){
  const cloudErrors = [];
+ const notes = [];
 
- const inv = await fetchLatestPayload('inventory:latest');
- if (inv.payload) catalog = inv.payload;
- else {
- if (!inv.ok) cloudErrors.push(`Stok/Harga: ${inv.message}`);
- try { const res = localStorage.getItem('inventory:latest'); if (res) catalog = JSON.parse(res); } catch(e){}
- }
+ catalog = resolvePayload('inventory:latest', await fetchLatestPayload('inventory:latest'), 'Stok/Harga', cloudErrors, notes);
+ soData = resolvePayload('so:latest', await fetchLatestPayload('so:latest'), 'Stock Opname', cloudErrors, notes);
 
- const so = await fetchLatestPayload('so:latest');
- if (so.payload) soData = so.payload;
- else {
- if (!so.ok) cloudErrors.push(`Stock Opname: ${so.message}`);
- try { const res = localStorage.getItem('so:latest'); if (res) soData = JSON.parse(res); } catch(e){}
- }
+ const sa = resolvePayload('stockavail:latest', await fetchLatestPayload('stockavail:latest'), 'Stock Available', cloudErrors, notes);
+ stockAvailMap = (sa && sa.map) || {};
+ stockAvailDesc = (sa && sa.descMap) || {};
+ stockAvailMeta = (sa && sa.meta) || null;
 
- const stockAvail = await fetchLatestPayload('stockavail:latest');
- if (stockAvail.payload){
- stockAvailMap = stockAvail.payload.map || {};
- stockAvailDesc = stockAvail.payload.descMap || {};
- stockAvailMeta = stockAvail.payload.meta || null;
- } else {
- if (!stockAvail.ok) cloudErrors.push(`Stock Available: ${stockAvail.message}`);
- try {
- const res = localStorage.getItem('stockavail:latest');
- if (res){
- const parsed = JSON.parse(res);
- stockAvailMap = parsed.map || {};
- stockAvailDesc = parsed.descMap || {};
- stockAvailMeta = parsed.meta || null;
- }
- }catch(e){}
- }
-
- const barcode = await fetchLatestPayload('barcode:latest');
- if (barcode.payload){
- BARCODE_MAP = barcode.payload.map || {};
- barcodeMeta = barcode.payload.meta || null;
+ const bc = resolvePayload('barcode:latest', await fetchLatestPayload('barcode:latest'), 'Barcode', cloudErrors, notes);
+ BARCODE_MAP = (bc && bc.map) || {};
+ barcodeMeta = (bc && bc.meta) || null;
  getBarcodes._normIndex = null;
- } else {
- if (!barcode.ok) cloudErrors.push(`Barcode: ${barcode.message}`);
- try {
- const res = localStorage.getItem('barcode:latest');
- if (res){
- const parsed = JSON.parse(res);
- BARCODE_MAP = parsed.map || {};
- barcodeMeta = parsed.meta || null;
- getBarcodes._normIndex = null;
- }
- }catch(e){}
- }
 
- const manual = await fetchLatestPayload('manualprice:latest');
- if (manual.payload){
- MANUAL_PRICE = { byDesc: manual.payload.byDesc || {}, byBarcode: manual.payload.byBarcode || {} };
- manualPriceMeta = manual.payload.meta || null;
- } else {
- if (!manual.ok) cloudErrors.push(`Price List Manual: ${manual.message}`);
- try {
- const res = localStorage.getItem('manualprice:latest');
- if (res){
- const parsedM = JSON.parse(res);
- MANUAL_PRICE = { byDesc: parsedM.byDesc || {}, byBarcode: parsedM.byBarcode || {} };
- manualPriceMeta = parsedM.meta || null;
- }
- }catch(e){}
- }
+ const mp = resolvePayload('manualprice:latest', await fetchLatestPayload('manualprice:latest'), 'Price List Manual', cloudErrors, notes);
+ MANUAL_PRICE = { byDesc: (mp && mp.byDesc) || {}, byBarcode: (mp && mp.byBarcode) || {} };
+ manualPriceMeta = (mp && mp.meta) || null;
 
  if (cloudErrors.length){
- console.error('Sebagian data gagal dimuat dari server (dipakai cadangan lokal):', cloudErrors);
- statusEl.textContent = `⚠ Gagal memuat dari server, dipakai data lokal perangkat ini: ${cloudErrors.join(' | ')}`;
+  console.error('Sebagian data gagal dimuat dari server (dipakai cadangan lokal):', cloudErrors);
+  statusEl.textContent = `⚠ Gagal memuat dari server, dipakai data lokal perangkat ini: ${cloudErrors.join(' | ')}`;
+ } else if (notes.length){
+  statusEl.textContent = `⚠ Data berikut hanya ada di perangkat ini (belum tersimpan di server): ${notes.join(', ')}. Upload ulang untuk menyinkronkan.`;
  }
 
  recomputeOthersWithStockAvail();
@@ -1018,7 +1191,7 @@ async function loadCatalog(){
 // (kalau constraint itu tidak ada, upsert bisa diam-diam membuat baris duplikat,
 // yang bikin pembacaan data jadi tidak menentu/ketuker antar perangkat).
 // 2) Baris duplikat lama (kalau sudah kadung ada) otomatis rapi lagi tiap kali ada upload baru.
-async function saveCatalogToCloud(key, payloadData){
+async function saveCatalogToCloudRaw(key, payloadData){
  // Simpan lokal dulu sebagai cadangan (tetap berguna walau server gagal)
  try { localStorage.setItem(key, JSON.stringify(payloadData)); } catch(e){}
 
@@ -1056,6 +1229,33 @@ async function saveCatalogToCloud(key, payloadData){
  console.error(e);
  return { ok:false, message: e.message || String(e) };
  }
+}
+
+// ===== Penanda sinkron per key (disimpan di perangkat) =====
+// synced:KEY   -> perangkat ini pernah memastikan datanya ADA di server.
+//                 Kalau kemudian server kosong, artinya data sudah DIHAPUS (bukan error),
+//                 jadi salinan lokal ikut dibuang — tidak "hidup lagi" di perangkat lain.
+// unsynced:KEY -> simpanan terakhir ke server GAGAL; salinan lokal dipertahankan.
+// Salinan lokal tanpa penanda apa pun (data lama sebelum versi ini) juga dipertahankan.
+const syncBusy = new Set(); // key yang sedang disimpan/dihapus — jangan diganggu polling
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+function markSynced(key){ lsSet('synced:' + key, '1'); lsDel('unsynced:' + key); }
+function markUnsynced(key){ lsSet('unsynced:' + key, '1'); }
+function isSynced(key){ return lsGet('synced:' + key) === '1'; }
+function isUnsynced(key){ return lsGet('unsynced:' + key) === '1'; }
+function clearLocalKey(key){ lsDel(key); lsDel('synced:' + key); lsDel('unsynced:' + key); }
+
+async function saveCatalogToCloud(key, payloadData){
+  syncBusy.add(key);
+  try{
+    const res = await saveCatalogToCloudRaw(key, payloadData);
+    if (res.ok) markSynced(key); else markUnsynced(key);
+    return res;
+  } finally {
+    syncBusy.delete(key);
+  }
 }
 
 function isSameDay(a, b){
@@ -1222,7 +1422,8 @@ function buildCatalog(plRows, snRows, fileName){
  snOthers: snOthers,
  otherUnits: otherUnitsMap[code] || null,
  ownUnits: ownUnitsMap[code] || null,
- inOwnList: !!pl
+ inOwnList: !!pl,
+ fromStockAvail: !pl && !snOthers && !ownUnitsMap[code] && !snDesc[code] && !!stockAvailMap[code]
  });
  });
 
@@ -1661,7 +1862,8 @@ function recomputeOthersWithStockAvail(){
  const existingCodes = new Set();
  catalog.items.forEach(it => {
  existingCodes.add(it.code);
- const base = (it.snOthers !== undefined && it.snOthers !== null) ? it.snOthers : (it.others || null);
+ // snOthers null = memang tidak ada di SN (bukan 'tidak diketahui'); hanya katalog lama tanpa field ini yang pakai others
+  const base = (it.snOthers !== undefined) ? it.snOthers : (it.others || null);
  it.others = mergeOthers(base, stockAvailMap[it.code]);
  });
  Object.keys(stockAvailMap).forEach(code => {
@@ -1676,9 +1878,12 @@ function recomputeOthersWithStockAvail(){
  snOthers: null,
  otherUnits: null,
  ownUnits: null,
- inOwnList: false
+ inOwnList: false,
+ fromStockAvail: true
  });
  });
+ // Buang barang yang HANYA muncul karena Stock Available, kalau datanya sudah tidak ada
+ catalog.items = catalog.items.filter(it => !(it.fromStockAvail && !it.others));
  if (searchInput.value.trim()) doSearch(); else renderEmpty();
 }
 
@@ -1841,40 +2046,181 @@ multiFileInput.addEventListener('change', async function(e){
  e.target.value = '';
 });
 
-document.getElementById('resetDataBtn').addEventListener('click', async function(){
- if (confirm('Apakah Anda yakin ingin menghapus data Stok/Harga di server? (Data Stock Opname Harian tidak terhapus)')) {
- try {
- const { error } = await supabase.from('app_data').delete().eq('key', 'inventory:latest');
- if (error) console.error('Gagal menghapus data di server:', error.message);
- } catch(e){ console.error(e); }
- localStorage.removeItem('inventory:latest');
- catalog = null;
- pendingPlRows = null; pendingSnRows = null; pendingPlName = null; pendingSnName = null;
- plCheckBadge.className = 'upload-check';
- plCheckBadge.textContent = '';
- plCheckBadge.title = '';
- snCheckBadge.className = 'upload-check';
- snCheckBadge.textContent = '';
- snCheckBadge.title = '';
- renderMeta();
- renderEmpty();
- statusEl.textContent = 'Data Stok/Harga berhasil dihapus dari server.';
- openFifo.clear();
- openBranches.clear();
+// ===== Hapus data =====
+// Prinsip: server dulu, perangkat belakangan.
+//  1) Perintah hapus ke server, lalu DIVERIFIKASI (baca ulang) — kalau data masih ada
+//     (mis. izin DELETE/RLS belum diatur) dianggap GAGAL dan dilaporkan apa adanya.
+//  2) Data di perangkat & tampilan baru dibersihkan setelah server terbukti kosong,
+//     jadi tidak pernah muncul pesan "berhasil" padahal data masih ada di server.
+//  3) Tiap jenis data dihapus terpisah; yang gagal tidak membatalkan yang berhasil.
+const DELETE_SCOPES = {
+ stock:   { label: 'Stok & Harga',      keys: ['inventory:latest'] },
+ avail:   { label: 'Stock Available',   keys: ['stockavail:latest'] },
+ barcode: { label: 'Data Barcode',      keys: ['barcode:latest'] },
+ manual:  { label: 'Price List Manual', keys: ['manualprice:latest'] }
+};
+
+const deleteOverlay = document.getElementById('deleteOverlay');
+const deleteMsg = document.getElementById('deleteMsg');
+const deleteConfirm = document.getElementById('deleteConfirm');
+const deleteCancel = document.getElementById('deleteCancel');
+let deleteArmed = false, deleteArmTimer = null, deleteBusy = false;
+
+async function cloudKeyExists(key){
+ try{
+  const { data, error } = await supabase.from('app_data').select('key').eq('key', key).limit(1);
+  if (error) return { ok:false, exists:null, message:error.message };
+  return { ok:true, exists: !!(data && data.length) };
+ }catch(e){
+  return { ok:false, exists:null, message: e.message || String(e) };
  }
+}
+
+async function deleteCloudKey(key){
+ syncBusy.add(key);
+ try{
+  try{
+   const { error } = await supabase.from('app_data').delete().eq('key', key);
+   if (error) return { ok:false, message: error.message };
+  }catch(e){
+   return { ok:false, message: e.message || String(e) };
+  }
+  const chk = await cloudKeyExists(key);
+  if (!chk.ok) return { ok:false, message: `penghapusan tidak bisa dipastikan (${chk.message})` };
+  if (chk.exists) return { ok:false, message: 'data masih ada di server setelah dihapus — kemungkinan role "anon" belum punya izin DELETE (RLS) di tabel app_data' };
+  return { ok:true, message:'' };
+ } finally {
+  syncBusy.delete(key);
+ }
+}
+
+function applyLocalDelete(scope){
+ if (scope === 'stock'){
+  catalog = null;
+  pendingPlRows = null; pendingSnRows = null; pendingPlName = null; pendingSnName = null;
+  openFifo.clear(); openBranches.clear(); openBranchUnits.clear();
+ } else if (scope === 'avail'){
+  stockAvailMap = {}; stockAvailDesc = {}; stockAvailMeta = null;
+  recomputeOthersWithStockAvail();
+ } else if (scope === 'barcode'){
+  BARCODE_MAP = {}; barcodeMeta = null; getBarcodes._normIndex = null;
+ } else if (scope === 'manual'){
+  MANUAL_PRICE = { byDesc: {}, byBarcode: {} }; manualPriceMeta = null;
+ }
+}
+
+async function runDelete(scopes){
+ const results = [];
+ for (const s of scopes){
+  const sc = DELETE_SCOPES[s];
+  let failMsg = null;
+  for (const key of sc.keys){
+   const r = await deleteCloudKey(key);
+   if (!r.ok){ failMsg = r.message; break; }
+  }
+  if (failMsg){
+   results.push({ scope: s, ok: false, message: failMsg });
+   continue;
+  }
+  sc.keys.forEach(clearLocalKey);
+  applyLocalDelete(s);
+  results.push({ scope: s, ok: true });
+ }
+ renderMeta();
+ refreshUploadBadges();
+ if (searchInput.value.trim()) doSearch(); else renderEmpty();
+ return results;
+}
+
+function disarmDelete(){
+ deleteArmed = false;
+ clearTimeout(deleteArmTimer);
+ deleteConfirm.textContent = 'Hapus';
+}
+function openDeleteModal(){
+ deleteMsg.textContent = '';
+ deleteMsg.className = '';
+ disarmDelete();
+ deleteOverlay.classList.add('show');
+}
+function closeDeleteModal(){
+ if (deleteBusy) return;
+ disarmDelete();
+ deleteOverlay.classList.remove('show');
+}
+
+document.getElementById('resetDataBtn').addEventListener('click', openDeleteModal);
+deleteCancel.addEventListener('click', closeDeleteModal);
+deleteOverlay.addEventListener('click', function(e){ if (e.target === deleteOverlay) closeDeleteModal(); });
+
+deleteConfirm.addEventListener('click', async function(){
+ if (deleteBusy) return;
+ const boxes = Array.from(deleteOverlay.querySelectorAll('input[name="delScope"]'));
+ const chosen = boxes.filter(b => b.checked).map(b => b.value);
+ if (!chosen.length){
+  deleteMsg.className = 'err';
+  deleteMsg.textContent = 'Pilih minimal satu data yang mau dihapus.';
+  return;
+ }
+ // Klik pertama = minta konfirmasi, klik kedua (dalam 5 detik) = hapus
+ if (!deleteArmed){
+  deleteArmed = true;
+  deleteConfirm.textContent = 'Yakin? Klik lagi untuk hapus';
+  deleteMsg.className = '';
+  deleteMsg.textContent = 'Data: ' + chosen.map(s => DELETE_SCOPES[s].label).join(', ') + '. Tidak bisa dibatalkan.';
+  clearTimeout(deleteArmTimer);
+  deleteArmTimer = setTimeout(disarmDelete, 5000);
+  return;
+ }
+ disarmDelete();
+ deleteBusy = true;
+ deleteConfirm.disabled = true; deleteCancel.disabled = true;
+ deleteMsg.className = '';
+ deleteMsg.textContent = 'Menghapus & memverifikasi di server...';
+ let results = [];
+ try { results = await runDelete(chosen); }
+ catch(e){ results = chosen.map(s => ({ scope: s, ok: false, message: e.message || String(e) })); }
+ deleteBusy = false;
+ deleteConfirm.disabled = false; deleteCancel.disabled = false;
+
+ const okList = results.filter(r => r.ok);
+ const failList = results.filter(r => !r.ok);
+ // Yang sudah berhasil tidak perlu dicentang lagi
+ okList.forEach(r => { const b = boxes.find(x => x.value === r.scope); if (b) b.checked = false; });
+
+ if (!failList.length){
+  statusEl.textContent = 'Berhasil dihapus dari server & perangkat ini: ' + okList.map(r => DELETE_SCOPES[r.scope].label).join(', ') + '.';
+  closeDeleteModal();
+  boxes.forEach(b => { b.checked = (b.value === 'stock'); });
+  return;
+ }
+ const lines = [];
+ okList.forEach(r => lines.push('✓ ' + DELETE_SCOPES[r.scope].label + ' — terhapus'));
+ failList.forEach(r => lines.push('✗ ' + DELETE_SCOPES[r.scope].label + ' — GAGAL: ' + r.message));
+ lines.push('Data yang gagal dihapus dibiarkan utuh di perangkat ini.');
+ deleteMsg.className = 'err';
+ deleteMsg.textContent = lines.join('\n');
+ statusEl.textContent = `Hapus data: ${okList.length} berhasil, ${failList.length} gagal.`;
 });
 
 document.getElementById('resetSoBtn').addEventListener('click', async function(){
- if (confirm('Apakah Anda yakin ingin menghapus data Stock Opname Harian di server? (Data Stok/Harga tidak terhapus)')) {
- try {
- const { error } = await supabase.from('app_data').delete().eq('key', 'so:latest');
- if (error) console.error('Gagal menghapus data SO di server:', error.message);
- } catch(e){ console.error(e); }
- localStorage.removeItem('so:latest');
- soData = null;
- renderSoModules();
- soSummaryInfo.textContent = 'Data SO berhasil dihapus dari server.';
+ if (!confirm('Hapus data Stock Opname Harian di server? Berlaku untuk semua perangkat. (Data Stok/Harga tidak terhapus)')) return;
+ const btn = this;
+ btn.disabled = true;
+ soSummaryInfo.textContent = 'Menghapus & memverifikasi di server...';
+ const r = await deleteCloudKey('so:latest');
+ if (!r.ok){
+  soSummaryInfo.textContent = `✗ Gagal menghapus data SO dari server: ${r.message}. Data di perangkat ini dibiarkan utuh.`;
+  btn.disabled = false;
+  return;
  }
+ clearLocalKey('so:latest');
+ lsDel('so:sheet');
+ soData = null;
+ soSelectedSheet = null;
+ renderSoModules();
+ soSummaryInfo.textContent = '✓ Data SO berhasil dihapus dari server.';
+ btn.disabled = false;
 });
 
 const FIFO_PREVIEW_LIMIT = 5;
@@ -2072,22 +2418,70 @@ loadCatalog();
 setInterval(updateStaleBanner, 60000);
 
 // Cek pembaruan dari pengguna lain secara berkala, agar sesi yang sudah terbuka
-// ikut ter-update tanpa perlu reload manual saat ada yang upload data baru.
+// ikut ter-update tanpa perlu reload manual saat ada yang upload ATAU menghapus data.
+// Penghapusan baru dianggap nyata kalau server kosong 2 kali berturut-turut (menghindari
+// celah singkat saat perangkat lain sedang mengganti data), dan hanya untuk data yang
+// pernah tersinkron di perangkat ini.
+let invEmptyStreak = 0, soEmptyStreak = 0;
 setInterval(async function(){
- const inv = await fetchLatestPayload('inventory:latest');
- if (inv.payload && (!catalog || inv.payload.updatedAt !== catalog.updatedAt)){
- catalog = inv.payload;
- renderMeta();
- refreshUploadBadges();
- if (searchInput.value.trim()) doSearch(); else renderEmpty();
+ if (!syncBusy.has('inventory:latest')){
+  const inv = await fetchLatestPayload('inventory:latest');
+  if (inv.payload){
+   invEmptyStreak = 0;
+   markSynced('inventory:latest');
+   if (!catalog || inv.payload.updatedAt !== catalog.updatedAt){
+    catalog = inv.payload;
+    renderMeta();
+    refreshUploadBadges();
+    if (searchInput.value.trim()) doSearch(); else renderEmpty();
+   }
+  } else if (inv.ok && catalog && isSynced('inventory:latest') && !isUnsynced('inventory:latest')){
+   if (++invEmptyStreak >= 2){
+    invEmptyStreak = 0;
+    catalog = null;
+    clearLocalKey('inventory:latest');
+    renderMeta();
+    refreshUploadBadges();
+    renderEmpty();
+    statusEl.textContent = 'Data Stok/Harga sudah dihapus dari server oleh perangkat lain.';
+   }
+  } else {
+   invEmptyStreak = 0;
+  }
  }
 
- const so = await fetchLatestPayload('so:latest');
- if (so.payload && (!soData || so.payload.updatedAt !== soData.updatedAt)){
- soData = so.payload;
- if (staffMode) renderSoModules();
+ if (!syncBusy.has('so:latest')){
+  const so = await fetchLatestPayload('so:latest');
+  if (so.payload){
+   soEmptyStreak = 0;
+   markSynced('so:latest');
+   if (!soData || so.payload.updatedAt !== soData.updatedAt){
+    soData = so.payload;
+    if (staffMode) renderSoModules();
+   }
+  } else if (so.ok && soData && isSynced('so:latest') && !isUnsynced('so:latest')){
+   if (++soEmptyStreak >= 2){
+    soEmptyStreak = 0;
+    soData = null;
+    soSelectedSheet = null;
+    clearLocalKey('so:latest');
+    if (staffMode) renderSoModules();
+   }
+  } else {
+   soEmptyStreak = 0;
+  }
  }
 }, 20000);
+
+soModalOverlay.addEventListener('click', function(e){
+ if (e.target === soModalOverlay) soModalOverlay.classList.remove('show');
+});
+document.addEventListener('keydown', function(e){
+ if (e.key !== 'Escape') return;
+ if (deleteOverlay.classList.contains('show')) closeDeleteModal();
+ else if (soModalOverlay.classList.contains('show')) soModalOverlay.classList.remove('show');
+ else if (pinOverlay.classList.contains('show')) closePinModal();
+});
 }catch(e){ window.__showError(e.message); }
 </script>
 </body>
