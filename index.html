@@ -92,20 +92,6 @@
  color:var(--muted);
  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
  }
- .meta-file{
- font-size:12.5px;
- font-weight:600;
- color:var(--text);
- margin-bottom:3px;
- display:flex;
- align-items:center;
- gap:5px;
- word-break:break-all;
- }
- .meta-file svg{
- flex-shrink:0;
- color:var(--staff);
- }
  #staffToggle{
  font-size:12px;
  font-weight:600;
@@ -136,27 +122,6 @@
  flex-wrap:wrap;
  width:100%;
  }
- .file-info-badge{
- width:100%;
- font-size:12.5px;
- color:var(--text);
- background:var(--panel);
- border:1px solid var(--line);
- border-radius:6px;
- padding:6px 10px;
- display:flex;
- align-items:center;
- gap:6px;
- word-break:break-all;
- }
- .file-info-badge .file-label{
- color:var(--muted);
- }
- .file-info-badge .file-name{
- font-weight:600;
- color:var(--staff);
- font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
- }
  .upload-btn{
  display:inline-block;
  background:var(--panel-2);
@@ -178,7 +143,6 @@
  min-width:220px;
  text-align:center;
  }
- .upload-slot{display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;}
  .upload-check{
  font-size:11px;
  font-weight:700;
@@ -397,13 +361,6 @@
  .badge.ready{color:var(--ready);background:var(--ready-bg);}
  .badge.indent{color:var(--indent);background:var(--indent-bg);}
  .badge.out{color:var(--out);background:var(--out-bg);}
- .branches{
- width:100%;
- font-size:12px;
- color:var(--muted);
- margin-top:6px;
- font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
- }
  .fifo-toggle, .branch-toggle{
  font-size:11.5px;
  font-weight:700;
@@ -421,7 +378,7 @@
  border-top:1px dashed var(--line);
  padding-top:8px;
  }
- .fifo-row, .branch-row{
+ .fifo-row{
  display:flex;
  justify-content:space-between;
  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
@@ -536,7 +493,6 @@
 
  /* ===== Responsif: HP, tablet (iPad), laptop, layar lebar ===== */
  #staffToggle, .upload-btn, .pin-btn, .so-tab{min-height:36px;display:inline-flex;align-items:center;justify-content:center;}
- .file-info-badge{min-height:0;}
  :focus-visible{outline:2px solid var(--staff);outline-offset:2px;}
 
  #app{
@@ -657,72 +613,22 @@
  @media (min-width:1400px){
   #results{grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:14px;}
  }
+ #results{scroll-margin-top:84px;}
+ .scan-note{
+  grid-column:1 / -1;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:10px 14px;font-size:13px;line-height:1.5;overflow-wrap:anywhere;
+ }
+ .empty b{color:var(--text);}
+ .card.scan-hit{animation:scanFlash .9s ease-out;}
+ @keyframes scanFlash{
+  0%{box-shadow:0 0 0 3px var(--staff);border-color:var(--staff);}
+  100%{box-shadow:0 0 0 0 transparent;}
+ }
  @media (prefers-reduced-motion:reduce){
   html.theme-anim *{transition:none !important;}
+  .card.scan-hit{animation:none;}
  }
-  // Variable penampung karakter barcode sementara & pencatat kecepatan ketikan
-let barcodeBuffer = '';
-let lastKeyTime = Date.now();
-
-document.addEventListener('keydown', function(event) {
-  // 1. PENGAMAN: Jika user sedang fokus mengetik di elemen input/textarea biasa, abaikan global scanner
-  const targetTag = event.target.tagName.toLowerCase();
-  const isEditable = event.target.isContentEditable;
-  if (targetTag === 'input' || targetTag === 'textarea' || isEditable) {
-    return; // Biarkan pengetikan normal berjalan di kolom tersebut
-  }
-
-  const currentTime = Date.now();
-  
-  // 2. DETEKSI MESIN SCANNER vs JARI MANUSIA
-  // Mesin scanner menembak karakter sangat cepat (umumnya < 30-50ms per karakter).
-  // Jika jeda antar tombol > 50ms, sistem menganggapnya jeda dan mereset buffer.
-  if (currentTime - lastKeyTime > 50) {
-    barcodeBuffer = '';
-  }
-  
-  // 3. TAMPUNG KARAKTER
-  // Hanya ambil karakter tunggal (angka/huruf), abaikan tombol navigasi seperti Shift, Ctrl, Tab
-  if (event.key.length === 1) {
-    barcodeBuffer += event.key;
-  }
-  
-  // 4. EKSEKUSI SAAT TOMBOL 'ENTER' DITERIMA
-  // Mesin scanner fisik selalu mengirim sinyal "Enter" di akhir pembacaan barcode
-  if (event.key === 'Enter') {
-    // Validasi: Pastikan panjang karakter masuk akal untuk sebuah barcode (misal min. 3 karakter)
-    if (barcodeBuffer.length >= 3) {
-      event.preventDefault(); // Mencegah reload halaman atau aksi default browser
-      
-      const hasilScan = barcodeBuffer.trim();
-      console.log("Barcode Terdeteksi:", hasilScan);
-      
-      // Panggil fungsi pencarian produk yang ada di webmu
-      prosesPencarianBarang(hasilScan);
-    }
-    
-    // Reset buffer untuk persiapan scan barang berikutnya
-    barcodeBuffer = '';
-  }
-  
-  // Perbarui waktu tombol terakhir ditekan
-  lastKeyTime = currentTime;
-});
-
-// FUNGSI PROSES PENCARIAN (Hubungkan dengan logika webmu)
-function prosesPencarianBarang(kodeBarcode) {
-  // A. Jika kamu punya fungsi pencarian yang sudah ada, panggil di sini.
-  // Contoh: jalankanPencarian(kodeBarcode);
-
-  // B. Jika ingin kolom pencarian visual di webmu juga ikut terisi kodenya:
-  const kolomCari = document.querySelector('input[type="search"]') || document.getElementById('search-input');
-  if (kolomCari) {
-    kolomCari.value = kodeBarcode;
-  }
-
-  // C. Contoh pemanggilan popup / pencarian data
-  alert(`Memproses Barcode: ${kodeBarcode}`);
-}
 </style>
 </head>
 <body>
@@ -850,7 +756,7 @@ function prosesPencarianBarang(kodeBarcode) {
  </div>
 
  <div class="search-wrap">
- <input type="text" id="searchInput" placeholder="Ketik nama, kode, no. SN, atau barcode..." autocomplete="off" />
+ <input type="text" id="searchInput" placeholder="Scan barcode atau ketik nama / kode barang..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" />
  </div>
  <div id="results"></div>
  <div class="note" id="footNote"></div>
@@ -946,6 +852,7 @@ const STAFF_PIN = "2026";
 let catalog = null;
 let soData = null;
 let staffMode = false;
+let currentScan = null; // hasil scan terakhir { raw, codes, serial, fresh } — tetap tampil walau kolom cari kosong
 const RESULT_LIMIT = 60;
 const openFifo = new Set();
 const openBranches = new Set();
@@ -1382,9 +1289,13 @@ function renderMeta(){
 
 function renderEmpty(){
  if (!catalog){
+ currentScan = null;
  resultsEl.innerHTML = '<div class="empty">Belum ada data tersimpan di server.<br/>Staff gudang: masuk mode Staff lalu upload file Excel hari ini.</div>';
+ } else if (currentScan){
+ renderScanResult();
+ return;
  } else {
- resultsEl.innerHTML = '<div class="empty">Ketik nama atau kode barang untuk mulai mencari.</div>';
+ resultsEl.innerHTML = '<div class="empty">Scan barcode, atau ketik nama / kode barang untuk mulai mencari.</div>';
  }
  footNote.textContent = '';
 }
@@ -2407,7 +2318,8 @@ resultsEl.addEventListener('click', function(e){
 let searchTimer = null;
 searchInput.addEventListener('input', function(){
  clearTimeout(searchTimer);
- searchTimer = setTimeout(doSearch, 120);
+ if (scanBurstActive()) return; // sedang menerima scan — jangan cari huruf demi huruf
+ searchTimer = setTimeout(function(){ currentScan = null; doSearch(); }, 120);
 });
 
 function getItemSearchHay(it){
@@ -2451,30 +2363,211 @@ verifyInput.addEventListener('input', function(){
  verifyTimer = setTimeout(doVerify, 120);
 });
 
-function doVerify(){
- const sn = verifyInput.value.trim();
- if (!sn){ verifyResult.innerHTML = ''; return; }
- if (!catalog || !catalog.serialIndex){
- verifyResult.innerHTML = '<span class="verify-bad">Belum ada data. Update data dulu.</span>';
- return;
- }
- const hit = catalog.serialIndex[sn];
- if (!hit){
- verifyResult.innerHTML = '<span class="verify-bad">Serial number tidak ditemukan di data hari ini. Cek ulang input.</span>';
- return;
- }
- const itemLine = `${escapeHtml(hit.desc)} <span style="color:var(--muted)">(${escapeHtml(hit.code)})</span>`;
- const priceDisplay = `Harga: <b style="color:var(--text);">${fmtRupiah(getEffectivePrice({ code: hit.code, desc: hit.desc, price: hit.price }).price)}</b>`;
-
+function fifoNoteHtml(hit){
  const allocWarn = hit.status === 'Allocated' ? '<br/><span class="verify-warn">⚠ Status: Allocated — minta cancel alokasi di sistem SAP dulu sebelum dijual ke customer.</span>' : '';
  if (hit.rank === 0){
- verifyResult.innerHTML = `${itemLine}<br/>${priceDisplay}<br/><span class="verify-ok">✔ Sesuai urutan FIFO</span> — masuk ${escapeHtml(hit.admissionDate)}, di ${escapeHtml(hit.whcode)}.${allocWarn}`;
+ return `<span class="verify-ok">✔ Sesuai urutan FIFO</span> — masuk ${escapeHtml(hit.admissionDate)}, di ${escapeHtml(hit.whcode)}.${allocWarn}`;
+ }
+ return `<span class="verify-warn">⚠ Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}) — ambil itu dulu.${allocWarn}`;
+}
+
+function verifyHtml(sn){
+ if (!catalog || !catalog.serialIndex) return '<span class="verify-bad">Belum ada data. Update data dulu.</span>';
+ const hit = catalog.serialIndex[sn];
+ if (!hit) return '<span class="verify-bad">Serial number tidak ditemukan di data hari ini. Cek ulang input.</span>';
+ const itemLine = `${escapeHtml(hit.desc)} <span style="color:var(--muted)">(${escapeHtml(hit.code)})</span>`;
+ const price = fmtRupiah(getEffectivePrice({ code: hit.code, desc: hit.desc, price: hit.price }).price);
+ return `${itemLine}<br/>Harga: <b style="color:var(--text);">${price}</b><br/>${fifoNoteHtml(hit)}`;
+}
+
+function doVerify(){
+ const sn = verifyInput.value.trim();
+ verifyResult.innerHTML = sn ? verifyHtml(sn) : '';
+}
+
+// Scanner di kolom verifikasi: Enter -> tampilkan hasil, lalu blok teks supaya scan berikutnya menimpa
+verifyInput.addEventListener('keydown', function(e){
+ if (e.key !== 'Enter') return;
+ e.preventDefault();
+ clearTimeout(verifyTimer);
+ doVerify();
+ verifyInput.select();
+});
+
+// ===== Scanner barcode / serial number — langsung scan, tanpa klik kolom pencarian =====
+// Scanner fisik bekerja seperti keyboard: mengetik semua karakter dengan sangat cepat lalu Enter.
+//  - Fokus di mana saja (selain kolom isian lain & popup): ketikan cepat dikenali sebagai scan.
+//  - Hasil langsung tampil; kolom cari dibiarkan KOSONG dan tetap fokus, jadi scan berikutnya langsung jalan.
+//  - Ketikan manual (lambat) tetap berfungsi sebagai pencarian biasa.
+// Urutan pencocokan: serial number unit -> barcode -> kode barang persis -> pencarian teks.
+const SCAN_MAX_GAP = 70;      // ms: jeda maksimum antar karakter agar dianggap scanner (manusia jauh lebih lambat)
+const SCAN_MIN_LEN = 4;       // panjang minimum bila diakhiri Enter/Tab
+const SCAN_IDLE_MIN_LEN = 8;  // panjang minimum bila scanner tidak mengirim Enter
+const SCAN_IDLE_MS = 130;     // tanpa ketikan selama ini -> scan dianggap selesai
+let scanBuf = '', scanLast = 0, scanMaxGap = 0, scanViaBody = false, scanTimer = null;
+const scanIdx = { bcRef: null, byBarcode: null, itemsRef: null, itemsLen: -1, byCode: null };
+
+// Barcode angka dibandingkan tanpa nol di depan (UPC-A 12 digit vs EAN-13 sering terbaca beda)
+function normBarcode(s){
+ const t = String(s || '').trim().replace(/\s+/g, '').toUpperCase();
+ if (!/^\d+$/.test(t)) return t;
+ return t.replace(/^0+/, '') || t;
+}
+
+function scanIndex(){
+ if (scanIdx.bcRef !== BARCODE_MAP){
+ const m = new Map();
+ Object.keys(BARCODE_MAP).forEach(code => {
+ const k = normBarcode(BARCODE_MAP[code]);
+ if (!k) return;
+ if (!m.has(k)) m.set(k, []);
+ m.get(k).push(code);
+ });
+ scanIdx.byBarcode = m;
+ scanIdx.bcRef = BARCODE_MAP;
+ }
+ if (catalog && (scanIdx.itemsRef !== catalog.items || scanIdx.itemsLen !== catalog.items.length)){
+ const m = new Map();
+ catalog.items.forEach(it => m.set(String(it.code).trim().toUpperCase(), it));
+ scanIdx.byCode = m;
+ scanIdx.itemsRef = catalog.items;
+ scanIdx.itemsLen = catalog.items.length;
+ }
+ return scanIdx;
+}
+
+function resolveScan(raw){
+ const q = String(raw).trim();
+ if (!q || !catalog) return null;
+ const idx = scanIndex();
+ const sI = catalog.serialIndex || {};
+ const snKey = sI[q] ? q : (sI[q.toUpperCase()] ? q.toUpperCase() : null);
+ if (snKey) return { codes: [sI[snKey].code], serial: snKey };
+ const bc = idx.byBarcode.get(normBarcode(q));
+ if (bc){
+ const codes = bc.filter(c => idx.byCode.has(String(c).trim().toUpperCase()));
+ if (codes.length) return { codes, serial: null };
+ }
+ const it = idx.byCode.get(q.toUpperCase());
+ if (it) return { codes: [it.code], serial: null };
+ return null;
+}
+
+function runScan(raw){
+ const q = String(raw).trim();
+ clearTimeout(searchTimer);
+ searchInput.value = '';
+ if (!q) return;
+ if (!catalog){ currentScan = null; renderEmpty(); return; }
+ const r = resolveScan(q);
+ if (r){
+ currentScan = { raw: q, codes: r.codes, serial: r.serial, fresh: true };
  } else {
- verifyResult.innerHTML = `${itemLine}<br/>${priceDisplay}<br/><span class="verify-warn">⚠ Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}) — ambil itu dulu.${allocWarn}`;
+ const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+ const found = catalog.items.filter(it => words.every(w => getItemSearchHay(it).includes(w))).slice(0, RESULT_LIMIT);
+ currentScan = { raw: q, codes: found.map(it => it.code), serial: null, fresh: true };
+ }
+ renderScanResult();
+ const ok = currentScan.codes.length > 0;
+ try { if (navigator.vibrate) navigator.vibrate(ok ? 25 : [70, 40, 70]); } catch(e){}
+ const top = resultsEl.getBoundingClientRect().top;
+ if (top < 60 || top > window.innerHeight * 0.7) resultsEl.scrollIntoView({ block: 'start' });
+ if (document.activeElement !== searchInput) searchInput.focus({ preventScroll: true });
+}
+
+function renderScanResult(){
+ const s = currentScan;
+ const byCode = scanIndex().byCode;
+ const items = s.codes.map(c => byCode.get(String(c).trim().toUpperCase())).filter(Boolean);
+ if (!items.length){
+ resultsEl.innerHTML = `<div class="empty"><b>Tidak ditemukan</b><br/>Barcode / SN <span class="barcode-val">${escapeHtml(s.raw)}</span> tidak ada di data hari ini.<br/>Scan ulang, atau ketik nama barang.</div>`;
+ footNote.textContent = '';
+ return;
+ }
+ let note = '';
+ if (s.serial && staffMode && catalog.serialIndex[s.serial]){
+ note = `<div class="scan-note">SN <span class="barcode-val">${escapeHtml(s.serial)}</span><br/>${fifoNoteHtml(catalog.serialIndex[s.serial])}</div>`;
+ }
+ resultsEl.innerHTML = note + items.map(renderItem).join('');
+ if (s.fresh){
+ const first = resultsEl.querySelector('.card');
+ if (first) first.classList.add('scan-hit');
+ s.fresh = false;
+ }
+ footNote.textContent = items.length > 1 ? `${items.length} barang cocok dengan barcode ini.` : '';
+}
+
+function scanReset(){
+ scanBuf = ''; scanMaxGap = 0; scanViaBody = false;
+ clearTimeout(scanTimer); scanTimer = null;
+}
+function scanIsFast(minLen){ return scanBuf.length >= minLen && scanMaxGap <= SCAN_MAX_GAP; }
+function scanBurstActive(){ return scanBuf.length >= 3 && scanMaxGap <= SCAN_MAX_GAP && Date.now() - scanLast < 250; }
+function scanBlocked(){
+ return pinOverlay.classList.contains('show') || deleteOverlay.classList.contains('show') || soModalOverlay.classList.contains('show');
+}
+function isOtherField(el){
+ if (!el || el === searchInput) return false;
+ const t = el.tagName;
+ return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || el.isContentEditable;
+}
+
+// Dipanggil saat ketikan berhenti
+function scanIdle(){
+ scanTimer = null;
+ const buf = scanBuf, viaBody = scanViaBody, fast = scanIsFast(SCAN_IDLE_MIN_LEN);
+ scanBuf = ''; scanMaxGap = 0; scanViaBody = false;
+ if (!buf) return;
+ if (fast){ runScan(buf); return; }   // scanner tanpa Enter
+ if (viaBody){                        // ketikan manual saat fokus bukan di kolom cari -> arahkan ke kolom cari
+ searchInput.focus({ preventScroll: true });
+ searchInput.value = buf;
+ searchInput.setSelectionRange(buf.length, buf.length);
+ currentScan = null;
+ doSearch();
  }
 }
 
+document.addEventListener('keydown', function(e){
+ if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+ if (scanBlocked() || isOtherField(e.target)){ scanReset(); return; }
+ const inSearch = e.target === searchInput;
+ const key = e.key;
+
+ if (key === 'Enter' || key === 'Tab'){
+ if (scanIsFast(SCAN_MIN_LEN)){
+ e.preventDefault();
+ const code = scanBuf;
+ scanReset();
+ runScan(code);
+ return;
+ }
+ scanReset();
+ if (key === 'Enter' && inSearch){
+ // Enter manual di kolom cari: kalau persis barcode / SN / kode barang, perlakukan sebagai scan
+ const v = searchInput.value.trim();
+ if (v && resolveScan(v)){ e.preventDefault(); runScan(v); }
+ else if (v){ clearTimeout(searchTimer); currentScan = null; doSearch(); }
+ }
+ return;
+ }
+
+ if (key.length !== 1) return; // Shift, Backspace, panah, dll tidak mengganggu
+ // Spasi pada tombol yang sedang fokus tetap dipakai untuk menekan tombol itu
+ if (key === ' ' && !scanBuf && !inSearch && e.target && e.target !== document.body && e.target.tagName !== 'HTML') return;
+
+ const now = Date.now();
+ if (scanBuf && now - scanLast > 400) scanReset();
+ if (scanBuf) scanMaxGap = Math.max(scanMaxGap, now - scanLast);
+ scanBuf += key;
+ scanLast = now;
+ if (!inSearch){ e.preventDefault(); scanViaBody = true; }
+ clearTimeout(scanTimer);
+ scanTimer = setTimeout(scanIdle, SCAN_IDLE_MS);
+});
+
 loadCatalog();
+if (window.matchMedia && matchMedia('(pointer:fine)').matches) searchInput.focus({ preventScroll: true });
 
 // Cek pergantian hari secara berkala, supaya banner tetap akurat
 // walau sesi dibiarkan terbuka melewati tengah malam.
