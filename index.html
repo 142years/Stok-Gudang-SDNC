@@ -660,6 +660,69 @@
  @media (prefers-reduced-motion:reduce){
   html.theme-anim *{transition:none !important;}
  }
+  // Variable penampung karakter barcode sementara & pencatat kecepatan ketikan
+let barcodeBuffer = '';
+let lastKeyTime = Date.now();
+
+document.addEventListener('keydown', function(event) {
+  // 1. PENGAMAN: Jika user sedang fokus mengetik di elemen input/textarea biasa, abaikan global scanner
+  const targetTag = event.target.tagName.toLowerCase();
+  const isEditable = event.target.isContentEditable;
+  if (targetTag === 'input' || targetTag === 'textarea' || isEditable) {
+    return; // Biarkan pengetikan normal berjalan di kolom tersebut
+  }
+
+  const currentTime = Date.now();
+  
+  // 2. DETEKSI MESIN SCANNER vs JARI MANUSIA
+  // Mesin scanner menembak karakter sangat cepat (umumnya < 30-50ms per karakter).
+  // Jika jeda antar tombol > 50ms, sistem menganggapnya jeda dan mereset buffer.
+  if (currentTime - lastKeyTime > 50) {
+    barcodeBuffer = '';
+  }
+  
+  // 3. TAMPUNG KARAKTER
+  // Hanya ambil karakter tunggal (angka/huruf), abaikan tombol navigasi seperti Shift, Ctrl, Tab
+  if (event.key.length === 1) {
+    barcodeBuffer += event.key;
+  }
+  
+  // 4. EKSEKUSI SAAT TOMBOL 'ENTER' DITERIMA
+  // Mesin scanner fisik selalu mengirim sinyal "Enter" di akhir pembacaan barcode
+  if (event.key === 'Enter') {
+    // Validasi: Pastikan panjang karakter masuk akal untuk sebuah barcode (misal min. 3 karakter)
+    if (barcodeBuffer.length >= 3) {
+      event.preventDefault(); // Mencegah reload halaman atau aksi default browser
+      
+      const hasilScan = barcodeBuffer.trim();
+      console.log("Barcode Terdeteksi:", hasilScan);
+      
+      // Panggil fungsi pencarian produk yang ada di webmu
+      prosesPencarianBarang(hasilScan);
+    }
+    
+    // Reset buffer untuk persiapan scan barang berikutnya
+    barcodeBuffer = '';
+  }
+  
+  // Perbarui waktu tombol terakhir ditekan
+  lastKeyTime = currentTime;
+});
+
+// FUNGSI PROSES PENCARIAN (Hubungkan dengan logika webmu)
+function prosesPencarianBarang(kodeBarcode) {
+  // A. Jika kamu punya fungsi pencarian yang sudah ada, panggil di sini.
+  // Contoh: jalankanPencarian(kodeBarcode);
+
+  // B. Jika ingin kolom pencarian visual di webmu juga ikut terisi kodenya:
+  const kolomCari = document.querySelector('input[type="search"]') || document.getElementById('search-input');
+  if (kolomCari) {
+    kolomCari.value = kodeBarcode;
+  }
+
+  // C. Contoh pemanggilan popup / pencarian data
+  alert(`Memproses Barcode: ${kodeBarcode}`);
+}
 </style>
 </head>
 <body>
