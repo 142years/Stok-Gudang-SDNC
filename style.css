@@ -1,0 +1,86 @@
+/* --- Variabel Warna & Font --- */
+:root {
+    --primary-blue: #0056b3;
+    --background-gray: #f4f7f6;
+    --border-color: #ddd;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-gray);
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 15px;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+/* --- Area Drag & Drop --- */
+.drop-zone {
+    border: 2px dashed var(--primary-blue);
+    padding: 40px;
+    text-align: center;
+    color: var(--primary-blue);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.drop-zone.drag-active {
+    background-color: #e9f5ff;
+}
+
+/* --- Tabel --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+th, td {
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    text-align: left;
+}
+
+th {
+    background-color: var(--primary-blue);
+    color: white;
+}
+
+/* --- Aturan Khusus Untuk Cetak (Print) Nota --- */
+.print-only {
+    display: none; /* Sembunyikan di layar normal */
+}
+
+@media print {
+    /* Sembunyikan semua elemen kecuali print-area saat di-print */
+    body * {
+        visibility: hidden; 
+    }
+    .no-print {
+        display: none !important;
+    }
+    .print-only, .print-only * {
+        visibility: visible;
+        display: block;
+    }
+    .print-only {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+}
