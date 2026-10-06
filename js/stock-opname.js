@@ -150,9 +150,12 @@ function soGetSheet() {
   return soSelectedSheet ? soData.sheets[soSelectedSheet] : null;
 }
 
-soFileInput.addEventListener('change', function (e) {
-  const file = e.target.files[0];
+function processSoFile(file) {
   if (!file) return;
+  if (!/\.xlsx?$/i.test(file.name)) {
+    alert('File Stock Opname harus berformat .xlsx (butuh banyak sheet, CSV tidak bisa).');
+    return;
+  }
   ensureXlsxLoaded()
     .then(() => {
       const reader = new FileReader();
@@ -178,7 +181,12 @@ soFileInput.addEventListener('change', function (e) {
       reader.readAsArrayBuffer(file);
     })
     .catch((err) => alert(err.message));
+}
+
+soFileInput.addEventListener('change', function (e) {
+  const file = e.target.files[0];
   e.target.value = '';
+  processSoFile(file);
 });
 
 soSheetSelect.addEventListener('change', function () {
