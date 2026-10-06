@@ -196,7 +196,54 @@ function recomputeOthersWithStockAvail() {
   else renderEmpty();
 }
 
+// Pembaca CSV: mengenali pemisah (; , atau tab), tanda kutip, dan BOM UTF-8.
+// Angka dibaca sebagai angka; teks berawalan nol (barcode, SN) dibiarkan sebagai teks.
+function parseCsv(text) {
+  text = String(text).replace(/^\uFEFF/, '');
+  const head = text.split(/\r?\n/, 1)[0] || '';
+  const delim = [';', '\t', ','].map((d) => [d, head.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else quoted = false;
+      } else cell += c;
+    } else if (c === '"') quoted = true;
+    else if (c === delim) {
+      row.push(cell);
+      cell = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell);
+      cell = '';
+      rows.push(row);
+      row = [];
+    } else cell += c;
+  }
+  if (cell !== '' || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows
+    .filter((r) => r.some((c) => c.trim() !== ''))
+    .map((r) =>
+      r.map((c) => {
+        const t = c.trim();
+        if (t === '') return null;
+        return /^-?(0|[1-9]\d{0,14})([.,]\d+)?$/.test(t) ? Number(t.replace(',', '.')) : t;
+      }),
+    );
+}
+
 function readSheetFile(file) {
+  if (/\.csv$/i.test(file.name)) return file.text().then(parseCsv);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = function (evt) {
@@ -329,15 +376,27 @@ async function detectAndProcessFile(file) {
   return { type: null, ok: false };
 }
 
-multiFileInput.addEventListener('change', async function (e) {
-  const files = Array.from(e.target.files || []);
+// Satu pintu untuk semua cara upload: tombol pilih file dan drag-and-drop
+let uploadBusy = false;
+async function processUploadFiles(files) {
   if (!files.length) return;
-
+  if (uploadBusy) {
+    statusEl.textContent = 'Masih memproses file sebelumnya — tunggu sebentar.';
+    return;
+  }
+  uploadBusy = true;
   try {
-    await ensureXlsxLoaded();
+    await runUploadFiles(files);
+  } finally {
+    uploadBusy = false;
+  }
+}
+
+async function runUploadFiles(files) {
+  try {
+    if (files.some((f) => !/\.csv$/i.test(f.name))) await ensureXlsxLoaded();
   } catch (err) {
     statusEl.textContent = err.message;
-    e.target.value = '';
     return;
   }
 
@@ -374,5 +433,51 @@ multiFileInput.addEventListener('change', async function (e) {
   } else if (failList.length) {
     statusEl.textContent += ` (${failList.length} file lain bermasalah: ${failList.join(' | ')})`;
   }
+}
+
+multiFileInput.addEventListener('change', function (e) {
+  const files = Array.from(e.target.files || []);
   e.target.value = '';
+  processUploadFiles(files);
+});
+
+// ===== Drag & drop =====
+const SHEET_FILE_RE = /\.(xlsx|xls|csv)$/i;
+const droppedFiles = (e) => Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+
+function bindDropZone(zone, onDrop) {
+  ['dragenter', 'dragover'].forEach((t) =>
+    zone.addEventListener(t, (e) => {
+      e.preventDefault();
+      zone.classList.add('over');
+    }),
+  );
+  ['dragleave', 'drop'].forEach((t) =>
+    zone.addEventListener(t, (e) => {
+      e.preventDefault();
+      zone.classList.remove('over');
+    }),
+  );
+  zone.addEventListener('drop', (e) => onDrop(droppedFiles(e)));
+}
+
+// Kotak upload utama: boleh banyak file sekaligus (.xlsx, .xls, .csv)
+bindDropZone(document.getElementById('dropZone'), (files) => {
+  const ok = files.filter((f) => SHEET_FILE_RE.test(f.name));
+  if (ok.length) processUploadFiles(ok);
+  else statusEl.textContent = 'Format tidak didukung — gunakan .xlsx, .xls, atau .csv.';
+});
+
+// Kotak upload Stock Opname: satu file .xlsx (butuh banyak sheet)
+bindDropZone(document.getElementById('soDropZone'), (files) => processSoFile(files[0]));
+
+// File yang dijatuhkan di luar kotak: jangan sampai browser berpindah ke file itu.
+// Di mode staff (dan popup Stock Opname tertutup), file tetap diproses sebagai upload utama.
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  if (e.target.closest && e.target.closest('.drop-zone')) return;
+  if (!staffMode || soModalOverlay.classList.contains('show')) return;
+  const ok = droppedFiles(e).filter((f) => SHEET_FILE_RE.test(f.name));
+  if (ok.length) processUploadFiles(ok);
 });
