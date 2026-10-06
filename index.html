@@ -18,7 +18,7 @@
 <!-- Pustaka Supabase Client untuk sinkronisasi cloud -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="css/theme.css?v=1" />
-<link rel="stylesheet" href="css/style.css?v=1" />
+<link rel="stylesheet" href="css/style.css?v=2" />
 </head>
 <body>
 <div id="app">
@@ -41,8 +41,9 @@
 
  <div id="uploadSection">
  <div class="upload-actions">
- <label class="upload-btn primary" for="multiFileInput">📤 Upload File Excel (bisa pilih beberapa sekaligus)</label>
- <input type="file" id="multiFileInput" accept=".xlsx" multiple style="display:none" />
+ <label class="upload-btn primary" for="multiFileInput">📤 Upload File Excel / CSV (bisa pilih beberapa sekaligus)</label>
+ <input type="file" id="multiFileInput" accept=".xlsx,.xls,.csv" multiple style="display:none" />
+ <label id="dropZone" class="drop-zone" for="multiFileInput">⬇ Tarik &amp; lepas file di sini (.xlsx, .xls, .csv) atau klik untuk memilih</label>
  <button id="resetDataBtn" class="upload-btn" style="background:var(--out-bg); color:var(--out); border-color:var(--out);">Hapus Data</button>
  </div>
  <div id="uploadStatus"></div>
@@ -95,6 +96,7 @@
  <input type="file" id="soFileInput" accept=".xlsx" style="display:none" />
  <button id="resetSoBtn" class="upload-btn" style="background:var(--out-bg); color:var(--out); border-color:var(--out); font-size:11.5px; padding:6px 10px;">Hapus Stock Opname Harian</button>
  <span id="soSummaryInfo" style="font-size:11.5px; color:var(--muted); width:100%;">Belum ada data SO</span>
+ <label id="soDropZone" class="drop-zone" for="soFileInput" style="width:100%;margin:0;">⬇ Tarik &amp; lepas file SO (.xlsx) di sini</label>
  </div>
  
  <div id="soSheetRow" style="display:none; margin-bottom:12px;">
@@ -189,8 +191,8 @@
 <script src="js/auth.js?v=1"></script>
 <script src="js/sync.js?v=1"></script>
 <script src="js/catalog.js?v=1"></script>
-<script src="js/stock-opname.js?v=1"></script>
-<script src="js/upload.js?v=1"></script>
+<script src="js/stock-opname.js?v=2"></script>
+<script src="js/upload.js?v=2"></script>
 <script src="js/delete.js?v=1"></script>
 <script src="js/search.js?v=1"></script>
 <script src="js/scanner.js?v=1"></script>
