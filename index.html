@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#181B22" />
+<script>
+(function(){
+  var t = null;
+  try { t = localStorage.getItem('theme'); } catch(e){}
+  if (t !== 'light' && t !== 'dark'){
+    t = (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+<title>Cek Harga & Stok</title>
+<!-- Pustaka Supabase Client untuk sinkronisasi cloud -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="css/theme.css?v=1" />
+<link rel="stylesheet" href="css/style.css?v=1" />
+</head>
+<body>
+<div id="app">
+ <div id="staleBanner" class="stale-banner">Data belum diperbarui hari ini — mohon konfirmasi ke gudang</div>
+ <header>
+ <div>
+ <h1>Cek Harga & Stok</h1>
+ <div id="meta">
+ <div id="metaDetail">Memuat data dari server...</div>
+ </div>
+ </div>
+ <div class="header-actions">
+ <button id="themeToggle" type="button" aria-label="Ganti ke mode terang" title="Ganti ke mode terang">
+ <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+ <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+ </button>
+ <button id="staffToggle" type="button">Staff Gudang</button>
+ </div>
+ </header>
+
+ <div id="uploadSection">
+ <div class="upload-actions">
+ <label class="upload-btn primary" for="multiFileInput">📤 Upload File Excel (bisa pilih beberapa sekaligus)</label>
+ <input type="file" id="multiFileInput" accept=".xlsx" multiple style="display:none" />
+ <button id="resetDataBtn" class="upload-btn" style="background:var(--out-bg); color:var(--out); border-color:var(--out);">Hapus Data</button>
+ </div>
+ <div id="uploadStatus"></div>
+ <div class="upload-status-grid">
+ <div class="upload-status-item">
+ <span class="upload-status-label">Price List</span>
+ <span id="plCheckBadge" class="upload-check"></span>
+ </div>
+ <div class="upload-status-item">
+ <span class="upload-status-label">Serial Number</span>
+ <span id="snCheckBadge" class="upload-check"></span>
+ </div>
+ <div class="upload-status-item">
+ <span class="upload-status-label">Stock Available</span>
+ <span id="stockAvailCheckBadge" class="upload-check"></span>
+ </div>
+ <div class="upload-status-item">
+ <span class="upload-status-label">Data Barcode</span>
+ <span id="barcodeCheckBadge" class="upload-check"></span>
+ </div>
+ <div class="upload-status-item">
+ <span class="upload-status-label">Price List Manual</span>
+ <span id="manualPriceCheckBadge" class="upload-check"></span>
+ </div>
+ </div>
+ </div>
+
+ <!-- Tombol Akses Pop-up SO Harian -->
+ <div id="soLauncherSection">
+ <span style="font-size:13px; font-weight:600; color:var(--staff);">Tugas Stock Opname Harian</span>
+ <button id="openSoModalBtn" class="upload-btn" style="background:var(--staff-bg); color:var(--staff); border-color:var(--staff); font-size:12.5px; padding:6px 12px;">Buka Stock Opname Harian</button>
+ </div>
+
+ <div id="verifySection">
+ <div class="label">Verifikasi Serial Number (FIFO) & Harga</div>
+ <input type="text" id="verifyInput" placeholder="Scan / ketik serial number unit..." autocomplete="off" />
+ <div id="verifyResult"></div>
+ </div>
+
+ <!-- Pop-up Modal Stock Opname Harian (SDNC) -->
+ <div id="soModalOverlay">
+ <div id="soModalBox">
+ <div id="soModalHeader">
+ <span style="font-size:14px; font-weight:700; color:var(--staff);">Stock Opname Harian (HP, ACC, ITR Gantung)</span>
+ <button id="closeSoModalBtn" style="background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; font-weight:bold;">&times;</button>
+ </div>
+ <div id="soModalBody">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
+ <label class="upload-btn" style="font-size:11.5px; padding:6px 10px;" for="soFileInput">Upload File SO Excel</label>
+ <input type="file" id="soFileInput" accept=".xlsx" style="display:none" />
+ <button id="resetSoBtn" class="upload-btn" style="background:var(--out-bg); color:var(--out); border-color:var(--out); font-size:11.5px; padding:6px 10px;">Hapus Stock Opname Harian</button>
+ <span id="soSummaryInfo" style="font-size:11.5px; color:var(--muted); width:100%;">Belum ada data SO</span>
+ </div>
+ 
+ <div id="soSheetRow" style="display:none; margin-bottom:12px;">
+          <select id="soSheetSelect" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; padding:8px 10px; border-radius:6px; outline:none;"></select>
+        </div>
+
+        <div class="so-tabs" style="display:flex; gap:6px; margin-bottom:12px;">
+ <div class="so-tab active" data-target="soGadget">HP (Gadget)</div>
+ <div class="so-tab" data-target="soAcc">Aksesoris (ACC)</div>
+ <div class="so-tab" data-target="soItr">ITR Gantung</div>
+ </div>
+ 
+ <!-- Tab 1: Gadget -->
+ <div id="soGadget" class="so-panel active">
+ <div style="margin-bottom:8px;">
+ <input type="text" id="soGadgetInput" placeholder="Cari deskripsi / IMEI HP..." autocomplete="off" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; font-family:ui-monospace,monospace; padding:8px 10px; border-radius:6px; outline:none;" />
+ </div>
+ <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:6px;">
+ <span>Daftar Checklist HP</span>
+ <span id="soGadgetStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
+ </div>
+ <div id="soGadgetList" style="max-height:var(--so-list-h); overflow-y:auto; font-size:12px;"></div>
+ </div>
+
+ <!-- Tab 2: Aksesoris -->
+ <div id="soAcc" class="so-panel">
+ <div style="margin-bottom:8px;">
+ <input type="text" id="soAccInput" placeholder="Cari nama / kode aksesoris..." autocomplete="off" style="width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); font-size:13px; padding:8px 10px; border-radius:6px; outline:none;" />
+ </div>
+ <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:6px;">
+ <span>Rekonsiliasi Stok ACC</span>
+ <span id="soAccStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
+ </div>
+ <div id="soAccContainer" style="max-height:var(--so-list-h); overflow-y:auto;"></div>
+ </div>
+
+ <!-- Tab 3: ITR Gantung -->
+ <div id="soItr" class="so-panel">
+ <div style="font-size:11.5px; color:var(--muted); margin-bottom:8px;">Monitoring dokumen ITR gantung dari hari sebelumnya.</div>
+ <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:6px;">
+ <span>Daftar Dokumen ITR</span>
+ <span id="soItrStats" style="color:var(--ready); font-weight:700;">0 / 0 Selesai</span>
+ </div>
+ <div id="soItrContainer" style="max-height:var(--so-list-h); overflow-y:auto;"></div>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <div class="search-wrap">
+ <input type="text" id="searchInput" placeholder="Scan barcode atau ketik nama / kode barang..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" />
+ </div>
+ <div id="results"></div>
+ <div class="note" id="footNote"></div>
+
+ <div id="deleteOverlay">
+ <div id="deleteBox" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+ <div class="pin-label" id="deleteTitle">Hapus data di server</div>
+ <div class="delete-hint">Pilih data yang mau dihapus. Penghapusan berlaku untuk semua perangkat. Data Stock Opname Harian tidak ikut terhapus (hapus lewat menu Stock Opname).</div>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="stock" checked /><span><b>Stok &amp; Harga</b><small>Price List + Serial Number</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="avail" /><span><b>Stock Available</b><small>Stok cabang lain</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="barcode" /><span><b>Data Barcode</b><small>Barcode per kode barang</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="manual" /><span><b>Price List Manual</b><small>Harga tambahan untuk barang indent</small></span></label>
+ <div id="deleteMsg" role="status"></div>
+ <div class="pin-actions">
+ <button id="deleteCancel" type="button" class="pin-btn ghost">Tutup</button>
+ <button id="deleteConfirm" type="button" class="pin-btn danger">Hapus</button>
+ </div>
+ </div>
+ </div>
+
+ <div id="pinOverlay">
+ <div id="pinBox">
+ <div class="pin-label">Masuk sebagai Staff Gudang</div>
+ <input type="password" id="pinInput" inputmode="numeric" placeholder="Masukkan PIN" autocomplete="off" />
+ <div id="pinError"></div>
+ <div class="pin-actions">
+ <button id="pinCancel" class="pin-btn ghost">Batal</button>
+ <button id="pinSubmit" class="pin-btn solid">Masuk</button>
+ </div>
+ </div>
+ </div>
+</div>
+
+<!-- Skrip dimuat berurutan: urutan ini penting -->
+<script src="js/errors.js?v=1"></script>
+<script src="js/theme.js?v=1"></script>
+<script src="js/config.js?v=1"></script>
+<script src="js/state.js?v=1"></script>
+<script src="js/pricing.js?v=1"></script>
+<script src="js/helpers.js?v=1"></script>
+<script src="js/auth.js?v=1"></script>
+<script src="js/sync.js?v=1"></script>
+<script src="js/catalog.js?v=1"></script>
+<script src="js/stock-opname.js?v=1"></script>
+<script src="js/upload.js?v=1"></script>
+<script src="js/delete.js?v=1"></script>
+<script src="js/search.js?v=1"></script>
+<script src="js/scanner.js?v=1"></script>
+<script src="js/main.js?v=1"></script>
+</body>
+</html>
