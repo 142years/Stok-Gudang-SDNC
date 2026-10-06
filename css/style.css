@@ -88,14 +88,6 @@ header h1 {
 .upload-btn:active {
   background: var(--panel-3);
 }
-.upload-btn.primary {
-  background: var(--staff-bg);
-  border-color: var(--staff);
-  color: var(--staff);
-  flex: 1;
-  min-width: 220px;
-  text-align: center;
-}
 .upload-check {
   font-size: 11px;
   font-weight: 700;
@@ -796,8 +788,8 @@ header > div:first-child {
 }
 /* HP: tombol upload & hapus selebar layar, SO tampil sebagai lembar dari bawah */
 @media (max-width: 560px) {
-  .upload-btn.primary {
-    min-width: 100%;
+  .drop-zone {
+    flex-basis: 100%;
   }
   #resetDataBtn {
     flex: 1;
@@ -905,30 +897,62 @@ header > div:first-child {
   }
 }
 
-/* Kotak drag & drop upload */
+/* Kotak upload: satu kontrol untuk klik pilih file DAN tarik & lepas */
 .drop-zone {
-  display: block;
-  border: 2px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1 1 260px;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 2px dashed var(--focus);
   border-radius: 10px;
-  padding: 14px;
-  margin: 8px 0;
+  background: var(--panel-2);
+  color: var(--text);
   text-align: center;
-  font-size: 13px;
-  color: var(--muted);
   cursor: pointer;
   transition:
     background-color 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    border-color 0.15s;
 }
+.drop-zone .dz-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.drop-zone .dz-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+.drop-zone.compact {
+  min-height: 44px;
+  padding: 6px 10px;
+  flex-basis: 200px;
+}
+.drop-zone.compact .dz-title {
+  font-size: 12.5px;
+}
+.drop-zone:hover,
 .drop-zone.over {
   border-color: var(--staff);
-  color: var(--staff);
+}
+.drop-zone.over {
   background: var(--staff-bg);
 }
-/* HP/tablet sentuh tidak bisa drag-and-drop: tombol upload sudah cukup */
+.drop-zone.over .dz-title,
+.drop-zone.over .dz-hint {
+  color: var(--staff);
+}
+/* Layar sentuh tidak bisa drag-and-drop: sembunyikan petunjuk tarik & lepas */
 @media (pointer: coarse) {
   .drop-zone {
+    border-style: solid;
+    border-width: 1px;
+    border-color: var(--line);
+    min-height: 48px;
+  }
+  .dz-drag {
     display: none;
   }
 }
