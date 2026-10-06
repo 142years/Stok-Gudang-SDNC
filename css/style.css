@@ -904,3 +904,31 @@ header > div:first-child {
     animation: none;
   }
 }
+
+/* Kotak drag & drop upload */
+.drop-zone {
+  display: block;
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  margin: 8px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.drop-zone.over {
+  border-color: var(--staff);
+  color: var(--staff);
+  background: var(--staff-bg);
+}
+/* HP/tablet sentuh tidak bisa drag-and-drop: tombol upload sudah cukup */
+@media (pointer: coarse) {
+  .drop-zone {
+    display: none;
+  }
+}
