@@ -38,11 +38,12 @@ body {
     transition: background 0.3s;
 }
 
+/* Warna latar berubah saat file diseret ke atas area ini */
 .drop-zone.drag-active {
     background-color: #e9f5ff;
 }
 
-/* --- Tabel --- */
+/* --- Tampilan Tabel --- */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -60,23 +61,49 @@ th {
     color: white;
 }
 
+/* Efek hover pada baris tabel */
+tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* --- Tombol --- */
+.btn {
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.btn:hover {
+    background-color: #004494;
+}
+
 /* --- Aturan Khusus Untuk Cetak (Print) Nota --- */
 .print-only {
-    display: none; /* Sembunyikan di layar normal */
+    display: none; /* Sembunyikan div nota di layar monitor normal */
 }
 
 @media print {
-    /* Sembunyikan semua elemen kecuali print-area saat di-print */
+    /* Sembunyikan semua elemen web biasa saat masuk mode print */
     body * {
         visibility: hidden; 
     }
+    
+    /* Sembunyikan area upload dan tombol cetak */
     .no-print {
         display: none !important;
     }
+    
+    /* Hanya tampilkan area nota */
     .print-only, .print-only * {
         visibility: visible;
         display: block;
     }
+    
+    /* Posisikan nota di pojok kiri atas kertas cetak */
     .print-only {
         position: absolute;
         left: 0;
