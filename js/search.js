@@ -81,8 +81,8 @@ function renderItem(it) {
   const eff = getEffectivePrice(it);
   const priceStr = fmtRupiah(eff.price);
   const priceNote =
-    eff.source === 'manual'
-      ? '<div style="font-size:11px; color:var(--muted); margin-top:2px;">Harga dari price list manual (belum ada di Price List utama)</div>'
+    eff.source === 'reborn'
+      ? '<div style="font-size:11px; color:var(--muted); margin-top:2px;">Harga Retail dari Price List Reborn (belum ada di Price List utama)</div>'
       : '';
   let statusHtml;
   let isIndent = false;

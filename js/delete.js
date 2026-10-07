@@ -10,7 +10,7 @@ const DELETE_SCOPES = {
   stock: { label: 'Stok & Harga', keys: ['inventory:latest'] },
   avail: { label: 'Stock Available', keys: ['stockavail:latest'] },
   barcode: { label: 'Data Barcode', keys: ['barcode:latest'] },
-  manual: { label: 'Price List Manual', keys: ['manualprice:latest'] },
+  reborn: { label: 'Price List Reborn', keys: ['rebornprice:latest', 'manualprice:latest'] }, // manualprice = data file lama, ikut dibersihkan
 };
 
 const deleteOverlay = document.getElementById('deleteOverlay');
@@ -73,9 +73,9 @@ function applyLocalDelete(scope) {
     BARCODE_MAP = {};
     barcodeMeta = null;
     getBarcodes._normIndex = null;
-  } else if (scope === 'manual') {
-    MANUAL_PRICE = { byDesc: {}, byBarcode: {} };
-    manualPriceMeta = null;
+  } else if (scope === 'reborn') {
+    REBORN_PRICE = { byCode: {} };
+    rebornPriceMeta = null;
   }
 }
 

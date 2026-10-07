@@ -52,9 +52,9 @@ function refreshUploadBadges() {
   );
   badgeFromMeta(barcodeCheckBadge, barcodeMeta && barcodeMeta.fileName, barcodeMeta && barcodeMeta.updatedAt);
   badgeFromMeta(
-    manualPriceCheckBadge,
-    manualPriceMeta && manualPriceMeta.fileName,
-    manualPriceMeta && manualPriceMeta.updatedAt,
+    rebornPriceCheckBadge,
+    rebornPriceMeta && rebornPriceMeta.fileName,
+    rebornPriceMeta && rebornPriceMeta.updatedAt,
   );
 }
 

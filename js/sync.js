@@ -90,15 +90,15 @@ async function loadCatalog() {
   barcodeMeta = (bc && bc.meta) || null;
   getBarcodes._normIndex = null;
 
-  const mp = resolvePayload(
-    'manualprice:latest',
-    await fetchLatestPayload('manualprice:latest'),
-    'Price List Manual',
+  const rp = resolvePayload(
+    'rebornprice:latest',
+    await fetchLatestPayload('rebornprice:latest'),
+    'Price List Reborn',
     cloudErrors,
     notes,
   );
-  MANUAL_PRICE = { byDesc: (mp && mp.byDesc) || {}, byBarcode: (mp && mp.byBarcode) || {} };
-  manualPriceMeta = (mp && mp.meta) || null;
+  REBORN_PRICE = { byCode: (rp && rp.byCode) || {} };
+  rebornPriceMeta = (rp && rp.meta) || null;
 
   if (cloudErrors.length) {
     console.error('Sebagian data gagal dimuat dari server (dipakai cadangan lokal):', cloudErrors);

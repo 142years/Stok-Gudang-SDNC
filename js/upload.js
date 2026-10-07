@@ -1,4 +1,4 @@
-// Upload & pembacaan file Excel (PL, SN, Stock Available, Barcode, Price List Manual)
+// Upload & pembacaan file Excel (PL, SN, Stock Available, Barcode, Price List Reborn)
 let xlsxLoadPromise = null;
 function ensureXlsxLoaded() {
   if (window.XLSX) return Promise.resolve();
@@ -68,85 +68,46 @@ function parseBarcodeRows(rows) {
   return map;
 }
 
-function validateManualPriceRows(rows) {
-  return rows && rows.length > 0 && headerContainsAll(rows[0], ['item description', 'barcode/imei', 'price']);
+function validateRebornPriceRows(rows) {
+  return rows && rows.length > 0 && headerContainsAll(rows[0], ['item no', 'retail', 'gro-1']);
 }
 
-// Kolom: #, Item Description, Barcode/Imei, Price, WhsCode
-// Satu harga per deskripsi = harga yang paling sering muncul (abaikan harga 0 / kosong).
-function parseManualPriceRows(rows) {
-  const descCount = {}; // { DESC: { harga: jumlah } }
-  const bcCount = {}; // { barcode: { harga: jumlah } }
+// Kolom file "Reborn_PriceList": #, Item No., Item Description, Retail, Gro-1 ... Gro-6, Retail-AMT
+// Yang dipakai hanya kolom "Retail" (dicari lewat nama header, jadi aman kalau urutan kolom bergeser).
+// Barang dengan Retail kosong / 0 dilewati.
+function parseRebornPriceRows(rows) {
+  const head = (rows[0] || []).map((c) => String(c || '').trim().toLowerCase());
+  const iCode = head.findIndex((h) => h.startsWith('item no'));
+  const iRetail = head.findIndex((h) => h === 'retail');
+  const byCode = {};
   let used = 0;
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
-    if (!r || !r[1]) continue;
-    const price = Number(r[3]);
+    if (!r || !r[iCode]) continue;
+    const price = Number(r[iRetail]);
     if (!(price > 0)) continue;
+    byCode[normCode(r[iCode])] = price;
     used++;
-    const d = normDesc(r[1]);
-    (descCount[d] = descCount[d] || {})[price] = ((descCount[d] || {})[price] || 0) + 1;
-    // "barcode-serial" -> ambil barcode-nya saja. Baris tanpa tanda "-" hanya IMEI/serial/barcode tunggal, tidak dipakai sebagai kunci.
-    const raw = r[2] ? String(r[2]).trim() : '';
-    const dash = raw.indexOf('-');
-    if (dash > 0) {
-      const bc = raw.slice(0, dash).trim();
-      if (/^\d{6,}$/.test(bc)) (bcCount[bc] = bcCount[bc] || {})[price] = ((bcCount[bc] || {})[price] || 0) + 1;
-    }
   }
-  function pickMode(counts) {
-    let best = null,
-      bestN = -1;
-    Object.keys(counts).forEach((p) => {
-      const n = counts[p];
-      if (n > bestN || (n === bestN && Number(p) > best)) {
-        best = Number(p);
-        bestN = n;
-      }
-    });
-    return best;
-  }
-  const byDesc = {},
-    byBarcode = {};
-  let ambiguous = 0;
-  Object.keys(descCount).forEach((d) => {
-    byDesc[d] = pickMode(descCount[d]);
-    if (Object.keys(descCount[d]).length > 1) ambiguous++;
-  });
-  Object.keys(bcCount).forEach((b) => {
-    byBarcode[b] = pickMode(bcCount[b]);
-  });
-  return { byDesc, byBarcode, ambiguous, rows: used };
+  return { byCode, rows: used };
 }
 
-// Bandingkan harga file manual dengan Price List utama yang sudah ada di catalog:
-//  - comparable: barang yang punya harga di PL utama DAN di file manual
-//  - match / mismatch: harga sama / beda
-//  - fill: barang TANPA harga di PL utama yang sekarang bisa terisi dari file manual
-//  - stillMissing: barang tanpa harga di PL utama dan tetap tidak ada di file manual
-function reconcileManualPrices(parsed) {
-  const store = { byDesc: parsed.byDesc, byBarcode: parsed.byBarcode };
-  const res = {
-    comparable: 0,
-    match: 0,
-    mismatch: 0,
-    fill: 0,
-    stillMissing: 0,
-    samples: [],
-    hasCatalog: !!(catalog && catalog.items),
-  };
+// Ringkasan perbandingan dengan Price List utama yang sudah ada di catalog (hanya informasi,
+// tidak memblokir upload):
+//  - comparable / match / mismatch: barang yang punya harga di PL utama DAN di file Reborn
+//  - fill: barang TANPA harga di PL utama yang sekarang terisi dari file Reborn
+//  - stillMissing: barang tanpa harga di PL utama dan tetap tidak ada di file Reborn
+function reconcileRebornPrices(parsed) {
+  const store = { byCode: parsed.byCode };
+  const res = { comparable: 0, match: 0, mismatch: 0, fill: 0, stillMissing: 0, hasCatalog: !!(catalog && catalog.items) };
   if (!res.hasCatalog) return res;
   catalog.items.forEach((it) => {
-    const m = lookupManualPrice(it, store);
+    const m = lookupRebornPrice(it, store);
     if (Number(it.price) > 0) {
       if (m) {
         res.comparable++;
         if (Math.round(m) === Math.round(Number(it.price))) res.match++;
-        else {
-          res.mismatch++;
-          if (res.samples.length < 3)
-            res.samples.push(`${it.desc}: PL ${fmtRupiah(it.price)} vs manual ${fmtRupiah(m)}`);
-        }
+        else res.mismatch++;
       }
     } else if (m) res.fill++;
     else res.stillMissing++;
@@ -289,7 +250,7 @@ async function tryBuildCatalogFromPending() {
 }
 
 // Deteksi jenis file berdasarkan header-nya, lalu proses & simpan ke slot yang sesuai.
-// Return: nama slot ('pl'/'sn'/'stockavail'/'barcode') kalau dikenali, atau null kalau tidak.
+// Return: nama slot ('pl'/'sn'/'stockavail'/'barcode'/'rebornprice') kalau dikenali, atau null kalau tidak.
 async function detectAndProcessFile(file) {
   const rows = await readSheetFile(file);
 
@@ -336,42 +297,37 @@ async function detectAndProcessFile(file) {
     }
     return { type: 'barcode', ok: result.ok, message: result.message };
   }
-  if (validateManualPriceRows(rows)) {
-    setCheckBadge(manualPriceCheckBadge, 'loading', 'Mencocokkan dengan Price List...');
-    const parsed = parseManualPriceRows(rows);
-    const rec = reconcileManualPrices(parsed);
-    const ratio = rec.comparable ? rec.match / rec.comparable : 1;
-    const MIN_COMPARABLE = 20,
-      MIN_RATIO = 0.9;
-    const summary = rec.hasCatalog
-      ? `${rec.match}/${rec.comparable} harga sama dengan Price List, ${rec.fill} barang tanpa harga bisa terisi, ${rec.stillMissing} masih kosong`
-      : 'belum ada data Price List untuk dibandingkan';
-    // Tidak sesuai -> jangan dipakai sama sekali
-    if (rec.comparable >= MIN_COMPARABLE && ratio < MIN_RATIO) {
-      const msg = `Harga tidak sesuai Price List (${rec.match}/${rec.comparable} sama). Contoh: ${rec.samples.join(' | ')}`;
-      setCheckBadge(manualPriceCheckBadge, 'bad', `✗ ${msg}`);
-      return { type: 'manualprice', ok: false, message: msg };
+  if (validateRebornPriceRows(rows)) {
+    setCheckBadge(rebornPriceCheckBadge, 'loading', 'Membaca Price List Reborn...');
+    const parsed = parseRebornPriceRows(rows);
+    if (!parsed.rows) {
+      const msg = 'Kolom Retail kosong semua — tidak ada harga yang bisa dipakai.';
+      setCheckBadge(rebornPriceCheckBadge, 'bad', `✗ ${msg}`);
+      return { type: 'rebornprice', ok: false, message: msg };
     }
-    MANUAL_PRICE = { byDesc: parsed.byDesc, byBarcode: parsed.byBarcode };
-    manualPriceMeta = {
+    const rec = reconcileRebornPrices(parsed);
+    const summary = rec.hasCatalog
+      ? `${parsed.rows} harga Retail dibaca, ${rec.fill} barang tanpa harga di Price List utama jadi terisi, ${rec.stillMissing} masih kosong`
+      : `${parsed.rows} harga Retail dibaca (belum ada data Price List utama untuk dibandingkan)`;
+    REBORN_PRICE = { byCode: parsed.byCode };
+    rebornPriceMeta = {
       fileName: file.name,
       updatedAt: new Date().toISOString(),
-      products: Object.keys(parsed.byDesc).length,
-      rows: parsed.rows,
+      products: parsed.rows,
+      rows: rows.length - 1,
     };
-    setCheckBadge(manualPriceCheckBadge, 'loading', 'Menyimpan ke server...');
-    const result = await saveCatalogToCloud('manualprice:latest', {
-      byDesc: MANUAL_PRICE.byDesc,
-      byBarcode: MANUAL_PRICE.byBarcode,
-      meta: manualPriceMeta,
+    setCheckBadge(rebornPriceCheckBadge, 'loading', 'Menyimpan ke server...');
+    const result = await saveCatalogToCloud('rebornprice:latest', {
+      byCode: REBORN_PRICE.byCode,
+      meta: rebornPriceMeta,
     });
     if (result.ok) {
-      setCheckBadge(manualPriceCheckBadge, 'ok', `✓ ${file.name}`);
-      manualPriceCheckBadge.title = summary;
+      setCheckBadge(rebornPriceCheckBadge, 'ok', `✓ ${file.name}`);
+      rebornPriceCheckBadge.title = summary;
     } else {
-      setCheckBadge(manualPriceCheckBadge, 'bad', `✗ Gagal simpan ke server: ${result.message}`);
+      setCheckBadge(rebornPriceCheckBadge, 'bad', `✗ Gagal simpan ke server: ${result.message}`);
     }
-    return { type: 'manualprice', ok: result.ok, message: result.message || '', summary };
+    return { type: 'rebornprice', ok: result.ok, message: result.message || '', summary };
   }
   return { type: null, ok: false };
 }
