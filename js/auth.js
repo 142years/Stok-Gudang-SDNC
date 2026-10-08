@@ -24,7 +24,6 @@ function enterStaffMode() {
   closePinModal();
   doSearch();
   renderSoModules();
-  if (typeof notaOnModeChange === 'function') notaOnModeChange();
 }
 function checkPin() {
   if (pinInput.value === STAFF_PIN) {
@@ -51,7 +50,6 @@ staffToggle.addEventListener('click', function () {
     staffToggle.classList.remove('active');
     staffToggle.textContent = 'Staff Gudang';
     doSearch();
-    if (typeof notaOnModeChange === 'function') notaOnModeChange();
     return;
   }
   openPinModal();

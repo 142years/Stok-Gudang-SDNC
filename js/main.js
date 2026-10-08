@@ -15,11 +15,8 @@ let invEmptyStreak = 0,
   soEmptyStreak = 0;
 setInterval(async function () {
   if (!syncBusy.has('inventory:latest')) {
-    const inv = await fetchLatestIfChanged('inventory:latest', catalog && catalog.updatedAt);
-    if (inv.unchanged) {
-      invEmptyStreak = 0;
-      markSynced('inventory:latest');
-    } else if (inv.payload) {
+    const inv = await fetchLatestPayload('inventory:latest');
+    if (inv.payload) {
       invEmptyStreak = 0;
       markSynced('inventory:latest');
       if (!catalog || inv.payload.updatedAt !== catalog.updatedAt) {
@@ -45,11 +42,8 @@ setInterval(async function () {
   }
 
   if (!syncBusy.has('so:latest')) {
-    const so = await fetchLatestIfChanged('so:latest', soData && soData.updatedAt);
-    if (so.unchanged) {
-      soEmptyStreak = 0;
-      markSynced('so:latest');
-    } else if (so.payload) {
+    const so = await fetchLatestPayload('so:latest');
+    if (so.payload) {
       soEmptyStreak = 0;
       markSynced('so:latest');
       if (!soData || so.payload.updatedAt !== soData.updatedAt) {
@@ -79,58 +73,3 @@ document.addEventListener('keydown', function (e) {
   else if (soModalOverlay.classList.contains('show')) soModalOverlay.classList.remove('show');
   else if (pinOverlay.classList.contains('show')) closePinModal();
 });
-
-// Pembaruan otomatis untuk data pendukung (Stock Available, Barcode, Price List Reborn).
-// Data ini bisa dikirim otomatis oleh Auto Sync di PC gudang, jadi sesi yang sedang terbuka
-// harus ikut menyegarkan diri. Yang dicek hanya "meta" (kecil); payload penuh baru diunduh
-// kalau waktu update-nya berubah.
-const AUX_SYNC = [
-  {
-    key: 'stockavail:latest',
-    meta: () => stockAvailMeta,
-    apply: (p) => {
-      stockAvailMap = p.map || {};
-      stockAvailDesc = p.descMap || {};
-      stockAvailMeta = p.meta || null;
-      recomputeOthersWithStockAvail();
-    },
-  },
-  {
-    key: 'barcode:latest',
-    meta: () => barcodeMeta,
-    apply: (p) => {
-      BARCODE_MAP = p.map || {};
-      barcodeMeta = p.meta || null;
-      getBarcodes._normIndex = null;
-    },
-  },
-  {
-    key: 'rebornprice:latest',
-    meta: () => rebornPriceMeta,
-    apply: (p) => {
-      REBORN_PRICE = { byCode: p.byCode || {} };
-      rebornPriceMeta = p.meta || null;
-      if (searchInput.value.trim()) doSearch();
-      else renderEmpty();
-    },
-  },
-];
-
-setInterval(async function () {
-  for (const a of AUX_SYNC) {
-    if (syncBusy.has(a.key)) continue;
-    try {
-      const { data, error } = await sbClient.from('app_data').select('meta:payload->meta').eq('key', a.key).limit(1);
-      if (error || !data || !data[0] || !data[0].meta) continue;
-      const cur = a.meta();
-      if (cur && cur.updatedAt === data[0].meta.updatedAt) continue;
-      const full = await fetchLatestPayload(a.key);
-      if (!full.payload) continue;
-      markSynced(a.key);
-      a.apply(full.payload);
-      refreshUploadBadges();
-    } catch (e) {
-      console.error('Gagal menyegarkan ' + a.key, e);
-    }
-  }
-}, 60000);
