@@ -35,10 +35,10 @@ Web app gudang (HTML + CSS + JavaScript biasa, tanpa build). Bisa langsung diedi
 
 
 ## Nota Digital (pengganti nota tulis)
-Tombol **📝 Nota** di header. Frontliner/promotor mengisi nota di HP: nama petugas, pelanggan, barang (ketik/scan, terhubung ke katalog), jumlah, harga (default dari price list, bisa diubah untuk promo/cashback/tebus murah), pembayaran (bisa lebih dari satu metode). Total otomatis. Nota bisa diunduh/dibagikan sebagai gambar ke pelanggan.
+Tombol **📝 Nota** di header. Sales mengisi nota di HP: nama sales (pilihan dropdown), pelanggan + No. HP, barang (ketik/scan, terhubung ke katalog), jumlah, harga (default dari price list, bisa diubah untuk promo/cashback/tebus murah), pembayaran (bisa lebih dari satu metode). Total otomatis. Nota diunduh/dibagikan sebagai gambar ke pelanggan, dengan tampilan mengikuti nota hasil input SAP.
 
-Alur status: `Draft → Menunggu validasi → Divalidasi → Selesai (No. Delivery diisi, terkunci)`; staf bisa mengembalikan ke FL atau membatalkan.
-- Data disimpan di tabel `app_data` Supabase dengan key `nota:<tanggal>:<id>` (tanpa perubahan skema).
+Alur status: `Draft → Menunggu validasi → Divalidasi → Selesai (No. Delivery diisi, terkunci)`; staf bisa mengembalikan ke sales atau membatalkan.
+- Data disimpan di tabel `app_data` Supabase dengan key `nota:<tanggal>:<id>` (tanpa perubahan skema). Daftar staf mencari per hari dengan `LIKE`.
 - Setiap nota juga disalin di perangkat; kalau sinyal putus, data aman dan bisa dikirim ulang.
-- File: `js/nota-core.js` (logika), `js/nota-ui.js` (tampilan), `css/nota.css`.
-- Teks pada gambar nota diatur di `NOTA_CONFIG` (`js/nota-core.js`).
+- **Pengaturan ada di `js/nota-config.js`**: nama toko & data perusahaan di nota, **daftar nama sales (dropdown)**, teks bagian bawah nota.
+- File lain: `js/nota-core.js` (logika), `js/nota-ui.js` (tampilan & gambar nota), `css/nota.css`.
