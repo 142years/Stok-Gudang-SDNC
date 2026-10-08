@@ -134,7 +134,8 @@ function scanBlocked() {
   return (
     pinOverlay.classList.contains('show') ||
     deleteOverlay.classList.contains('show') ||
-    soModalOverlay.classList.contains('show')
+    soModalOverlay.classList.contains('show') ||
+    (typeof notaIsOpen === 'function' && notaIsOpen())
   );
 }
 function isOtherField(el) {

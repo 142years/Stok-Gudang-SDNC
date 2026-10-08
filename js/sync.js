@@ -17,6 +17,21 @@ async function fetchLatestPayload(key) {
   }
 }
 
+// Versi hemat untuk polling berkala: cek dulu penanda waktu (payload.updatedAt, beberapa byte saja).
+// Payload penuh (bisa beberapa MB) baru diunduh kalau penandanya berbeda dari yang sudah dimiliki.
+// Hasil { unchanged: true } = data ada di server dan tidak berubah.
+async function fetchLatestIfChanged(key, currentStamp) {
+  try {
+    const { data, error } = await sbClient.from('app_data').select('u:payload->>updatedAt').eq('key', key).limit(1);
+    if (error) return { ok: false, payload: null, message: error.message };
+    if (!data || !data[0]) return { ok: true, payload: null, message: '' };
+    if (currentStamp && data[0].u && data[0].u === currentStamp) return { ok: true, payload: null, unchanged: true, message: '' };
+    return await fetchLatestPayload(key);
+  } catch (e) {
+    return { ok: false, payload: null, message: e.message || String(e) };
+  }
+}
+
 // Load data dari Supabase Cloud agar bisa diakses semua device.
 // Tiap key dimuat independen — kalau salah satu gagal (atau belum ada datanya),
 // yang lain tetap lanjut dimuat normal.
