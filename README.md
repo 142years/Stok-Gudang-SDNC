@@ -10,7 +10,7 @@ Web app gudang (HTML + CSS + JavaScript biasa, tanpa build). Bisa langsung diedi
 | `css/style.css` | Tata letak & komponen |
 | `js/config.js` | **URL/Key Supabase dan PIN staff** |
 | `js/state.js` | Variabel global & elemen halaman |
-| `js/pricing.js` | Harga dari Price List Manual |
+| `js/pricing.js` | Harga dari Price List Reborn (kolom Retail) |
 | `js/helpers.js` | Format Rupiah, escape HTML, tanggal |
 | `js/auth.js` | PIN & mode Staff Gudang |
 | `js/sync.js` | Sinkron ke/dari Supabase + cadangan lokal |
@@ -32,3 +32,13 @@ Web app gudang (HTML + CSS + JavaScript biasa, tanpa build). Bisa langsung diedi
 - **Urutan `<script>` di `index.html` jangan diubah.** Semua file berbagi variabel global yang sama.
 - Satu folder = satu paket: unggah `index.html`, `css/`, dan `js/` bersama-sama.
 - Mau ganti PIN staff atau Supabase? Cukup `js/config.js`.
+
+
+## Nota Digital (pengganti nota tulis)
+Tombol **📝 Nota** di header. Sales mengisi nota di HP: nama sales (pilihan dropdown), pelanggan + No. HP, barang (ketik/scan, terhubung ke katalog), jumlah, harga (default dari price list, bisa diubah untuk promo/cashback/tebus murah), pembayaran (bisa lebih dari satu metode). Total otomatis. Nota diunduh/dibagikan sebagai gambar ke pelanggan, dengan tampilan mengikuti nota hasil input SAP.
+
+Alur status: `Draft → Menunggu validasi → Divalidasi → Selesai (No. Delivery diisi, terkunci)`; staf bisa mengembalikan ke sales atau membatalkan.
+- Data disimpan di tabel `app_data` Supabase dengan key `nota:<tanggal>:<id>` (tanpa perubahan skema). Daftar staf mencari per hari dengan `LIKE`.
+- Setiap nota juga disalin di perangkat; kalau sinyal putus, data aman dan bisa dikirim ulang.
+- **Pengaturan ada di `js/nota-config.js`**: nama toko & data perusahaan di nota, **daftar nama sales (dropdown)**, teks bagian bawah nota.
+- File lain: `js/nota-core.js` (logika), `js/nota-ui.js` (tampilan & gambar nota), `css/nota.css`.
