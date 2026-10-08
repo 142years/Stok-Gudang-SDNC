@@ -4,6 +4,9 @@
 //   (staf bisa mengembalikan ke draft untuk diperbaiki; nota bisa dibatalkan)
 
 const NOTA_CONFIG = {
+  title: 'NOTA SEMENTARA',
+  footer:
+    'Nota sementara dari frontliner/promotor. Bukti pembelian resmi diterbitkan setelah nota divalidasi dan diproses kasir/gudang.',
   mineKey: 'nota:mine', // daftar nota yang dibuat di perangkat ini (localStorage)
   draftKey: 'nota:draft', // isi form yang sedang diketik (localStorage), supaya tidak hilang
   mirrorPrefix: 'nota:local:', // salinan lokal tiap nota (cadangan kalau sinyal putus)
@@ -99,9 +102,9 @@ function notaNew(prefs, now) {
     updatedAt: now.toISOString(),
     rev: 0,
     status: 'draft',
-    fl: { name: prefs.flName || '' },
-    branch: NOTA_STORE.name, // otomatis; ubah di js/nota-config.js
-    customer: { name: '', phone: '' },
+    fl: { name: prefs.flName || '', role: prefs.role || 'Frontliner' },
+    branch: prefs.branch || '',
+    customer: { name: '', phone: '', code: '' },
     items: [notaEmptyItem()],
     payments: [],
     note: '',
@@ -155,7 +158,8 @@ function notaNormPhone(s) {
 function notaValidate(n) {
   const errors = [],
     warnings = [];
-  if (!n.fl.name.trim()) errors.push('Nama sales wajib dipilih.');
+  if (!n.fl.name.trim()) errors.push('Nama frontliner/promotor wajib diisi.');
+  if (!String(n.branch || '').trim()) errors.push('Cabang/toko wajib diisi.');
   if (!n.customer.name.trim()) errors.push('Nama pelanggan wajib diisi.');
   if (n.customer.phone.trim() && !notaNormPhone(n.customer.phone).ok)
     errors.push('Nomor HP pelanggan tidak valid (contoh: 0812 3456 7890).');
@@ -281,7 +285,7 @@ function notaCsvCell(v, isText) {
 // Satu baris per barang. Pemisah ';' (cocok untuk Excel berbahasa Indonesia).
 function notaToCsv(list) {
   const head = [
-    'No Nota', 'Tanggal', 'Status', 'Sales', 'Pelanggan', 'No HP',
+    'No Nota', 'Tanggal', 'Status', 'Petugas', 'Peran', 'Cabang', 'Pelanggan', 'No Customer', 'No HP',
     'Kode Barang', 'Nama Barang', 'Qty', 'Harga Satuan', 'Jenis Harga', 'Subtotal', 'No Seri/IMEI',
     'Total Nota', 'Terbayar', 'No Delivery', 'Divalidasi Oleh',
   ];
@@ -294,8 +298,8 @@ function notaToCsv(list) {
       rows.push(
         [
           notaCsvCell(n.id), notaCsvCell(n.date), notaCsvCell(NOTA_STATUS[n.status] || n.status),
-          notaCsvCell(n.fl.name, true),
-          notaCsvCell(n.customer.name, true), notaCsvCell(ph),
+          notaCsvCell(n.fl.name, true), notaCsvCell(n.fl.role), notaCsvCell(n.branch, true),
+          notaCsvCell(n.customer.name, true), notaCsvCell(n.customer.code, true), notaCsvCell(ph),
           notaCsvCell(it.code, true), notaCsvCell(it.desc, true), notaCsvCell(it.qty), notaCsvCell(it.price),
           notaCsvCell(typeLabel(it.priceType)), notaCsvCell(notaLineSubtotal(it)), notaCsvCell(it.serial, true),
           notaCsvCell(t.total), notaCsvCell(t.paid), notaCsvCell((n.delivery && n.delivery.no) || '', true),
@@ -404,34 +408,16 @@ async function notaFetchByKeys(keys) {
   return { ok: true, list: out };
 }
 // Daftar nota dalam rentang tanggal pembuatan (YYYY-MM-DD), terbaru dulu.
-// Dicari per hari dengan LIKE (bukan perbandingan rentang pada teks): urutan teks di Postgres
-// bergantung pada collation database dan bisa melewatkan nota, sedangkan LIKE tidak.
-function notaDatesBetween(fromDate, toDate) {
-  const out = [];
-  const [fy, fm, fd] = fromDate.split('-').map(Number);
-  const d = new Date(fy, fm - 1, fd);
-  for (let i = 0; i < 62; i++) {
-    const ds = notaLocalDate(d);
-    out.push(ds);
-    if (ds >= toDate) break;
-    d.setDate(d.getDate() + 1);
-  }
-  return out;
-}
 async function notaFetchRange(fromDate, toDate) {
-  const dates = notaDatesBetween(fromDate, toDate);
-  const out = [];
-  let err = null;
-  await Promise.all(
-    dates.map(async (d) => {
-      const { data, error } = await sbClient.from('app_data').select('payload').like('key', `nota:${d}:%`).limit(500);
-      if (error) err = error;
-      else (data || []).forEach((r) => r.payload && out.push(r.payload));
-    }),
-  );
-  if (err && !out.length) return { ok: false, message: err.message, list: [] };
-  out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  return { ok: true, list: out.slice(0, 500), partialError: err ? err.message : '' };
+  const { data, error } = await sbClient
+    .from('app_data')
+    .select('payload')
+    .gte('key', `nota:${fromDate}:`)
+    .lt('key', `nota:${toDate}:~`)
+    .order('key', { ascending: false })
+    .limit(500);
+  if (error) return { ok: false, message: error.message, list: [] };
+  return { ok: true, list: (data || []).map((r) => r.payload).filter(Boolean) };
 }
 
 if (typeof module !== 'undefined') {

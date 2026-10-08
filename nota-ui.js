@@ -17,7 +17,6 @@
     listMsg: '',
     timer: null,
     suggestTimer: null,
-    manualName: false,
   };
   const role = () => (staffMode ? 'staff' : 'fl');
   const prefs = () => notaLsGet(NOTA_CONFIG.prefsKey) || {};
@@ -100,7 +99,6 @@
     notaLsDel(NOTA_CONFIG.draftKey);
     S.cur = notaNew(prefs());
     S.dirty = false;
-    S.manualName = false;
   }
   function confirmDiscard() {
     if (!S.dirty || !S.cur) return true;
@@ -110,7 +108,6 @@
     if (!confirmDiscard()) return;
     S.cur = JSON.parse(JSON.stringify(n));
     S.dirty = false;
-    S.manualName = false;
     switchTab('edit');
   }
 
@@ -222,26 +219,27 @@
       editable = notaCanEdit(n, r),
       dis = editable ? '' : 'disabled';
     const keepScroll = body.scrollTop;
-    const names = NOTA_SALES_NAMES.slice();
-    const manualOn = NOTA_ALLOW_MANUAL_NAME && ((n.fl.name && !names.includes(n.fl.name)) || S.manualName);
-    if (n.fl.name && !names.includes(n.fl.name) && !NOTA_ALLOW_MANUAL_NAME) names.push(n.fl.name); // nota lama: nama tetap tampil
-    const nameSel = `<select class="fl-sel" ${dis}><option value="">— pilih nama sales —</option>${names
-      .map((x) => `<option value="${esc(x)}"${!manualOn && n.fl.name === x ? ' selected' : ''}>${esc(x)}</option>`)
-      .join('')}${NOTA_ALLOW_MANUAL_NAME ? `<option value="__manual"${manualOn ? ' selected' : ''}>Lainnya (ketik manual)…</option>` : ''}</select>`;
-    const nameManual = manualOn ? `<input type="text" data-f="fl.name" value="${esc(n.fl.name)}" placeholder="Ketik nama sales" autocomplete="off" ${dis}>` : '';
+    const roleSeg = ['Frontliner', 'Promotor']
+      .map((x) => `<button type="button" class="seg${n.fl.role === x ? ' on' : ''}" data-act="role" data-role="${x}" ${dis}>${x}</button>`)
+      .join('');
     const banner =
       `<div class="nota-status st-${n.status}"><b>${esc(NOTA_STATUS[n.status])}</b> · ${esc(n.id)}${n.rev ? '' : ' · belum tersimpan di server'}${notaIsPending(n.id) ? ' · <u>perubahan belum terkirim</u>' : ''}</div>` +
       (n.status === 'draft' && n.returnNote ? `<div class="nota-return">↩ Dikembalikan staf: ${esc(n.returnNote)}</div>` : '') +
       (!editable && r === 'fl' && n.status !== 'draft' ? `<div class="hint">Nota ini sudah diajukan dan tidak bisa diubah frontliner. Minta staf mengembalikannya bila perlu diperbaiki.</div>` : '');
     const catWarn = catalog ? '' : `<div class="hint warn">Data katalog belum dimuat — barang hanya bisa diketik manual.</div>`;
     body.innerHTML = `<div class="nota-wrap">${banner}
-      <div class="nota-sec"><h3>Sales</h3>
-        <label class="lbl">Nama sales${nameSel}${nameManual}</label></div>
+      <div class="nota-sec"><h3>Petugas</h3>
+        <div class="seg-row">${roleSeg}</div>
+        <div class="grid2">
+          <label class="lbl">Nama ${esc(n.fl.role.toLowerCase())}<input type="text" data-f="fl.name" value="${esc(n.fl.name)}" placeholder="Nama lengkap" autocomplete="off" ${dis}></label>
+          <label class="lbl">Cabang / toko<input type="text" data-f="branch" value="${esc(n.branch)}" placeholder="mis. Toko Pusat" autocomplete="off" ${dis}></label>
+        </div></div>
       <div class="nota-sec"><h3>Pelanggan</h3>
         <div class="grid2">
           <label class="lbl">Nama pelanggan<input type="text" data-f="customer.name" value="${esc(n.customer.name)}" autocomplete="off" ${dis}></label>
           <label class="lbl">No. HP<input type="tel" inputmode="tel" data-f="customer.phone" value="${esc(n.customer.phone)}" placeholder="0812 3456 7890" autocomplete="off" ${dis}></label>
-        </div></div>
+        </div>
+        <label class="lbl">No. Customer <small>(opsional, kalau pelanggan sudah punya kode/member)</small><input type="text" data-f="customer.code" value="${esc(n.customer.code)}" autocomplete="off" ${dis}></label></div>
       <div class="nota-sec"><h3>Barang</h3>${catWarn}
         <div id="nLines">${n.items.map((it, i) => lineHtml(it, i, dis)).join('')}</div>
         ${editable ? '<button type="button" class="b-ghost wide" data-act="addLine">+ Tambah barang</button>' : ''}</div>
@@ -384,10 +382,9 @@
 
   // ---------- gambar nota ----------
   function renderNotaCanvas(n) {
-    // Tampilan mengikuti nota hasil input SAP (kolom Perincian / Qty / Price / Total, angka gaya 149,000).
     const SC = 2,
-      W = 620,
-      P = 26,
+      W = 640,
+      P = 28,
       FONT = '-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
     const meas = document.createElement('canvas').getContext('2d');
     const wrap = (text, font, maxW) => {
@@ -415,145 +412,106 @@
       return lines;
     };
     const ops = [];
+    let y = P;
     const text = (t, x, yy, font, color, align) => ops.push({ t, x, y: yy, font, color: color || '#111', align: align || 'left' });
-    const hr = (yy) => ops.push({ hr: true, y: yy });
-    const num = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');
+    const hr = (yy, dash) => ops.push({ hr: true, y: yy, dash });
     const t = notaTotals(n);
-    const d = new Date(n.createdAt);
-    const dateStr = `${notaPad2(d.getDate())}/${notaPad2(d.getMonth() + 1)}/${d.getFullYear()}`;
-    const timeStr = `${notaPad2(d.getHours())}:${notaPad2(d.getMinutes())}`;
-    const RX = 340; // kolom kanan header
-    const TX = W - P, PX = TX - 120, QX = PX - 112; // kanan kolom Total / Price / Qty
-
-    // ----- header kiri: toko & perusahaan
-    let yl = P + 18;
-    const storeName = String(NOTA_STORE.name || '').toUpperCase();
-    let fs = 20;
-    meas.font = `bold ${fs}px ${FONT}`;
-    while (fs > 13 && meas.measureText(storeName).width > RX - P - 12) meas.font = `bold ${--fs}px ${FONT}`; // perkecil sampai muat
-    text(storeName, P, yl, `bold ${fs}px ${FONT}`);
-    yl += 20;
-    [NOTA_STORE.company, NOTA_STORE.address, NOTA_STORE.npwp].filter(Boolean).forEach((l) =>
-      wrap(l, `11.5px ${FONT}`, RX - P - 12).forEach((ln) => {
-        text(ln, P, yl, `11.5px ${FONT}`, '#333');
-        yl += 15;
-      }),
-    );
-    yl += 6;
-    text(n.id, P, yl, `bold 14px ${FONT}`);
-    yl += 8;
-    // ----- header kanan: pembayaran, pelanggan, tanggal
-    let yr = P + 16;
-    n.payments
-      .filter((p) => Number(p.amount) > 0)
-      .forEach((p) =>
-        wrap(`${p.method}${p.ref ? ' ' + p.ref : ''}`, `bold 14px ${FONT}`, W - P - RX).forEach((ln) => {
-          text(ln, RX, yr, `bold 14px ${FONT}`);
-          yr += 19;
-        }),
-      );
-    const rkv = (k, v) => {
-      if (!v) return;
-      text(k + ' :', RX, yr, `13px ${FONT}`, '#333');
-      wrap(v, `13px ${FONT}`, W - P - RX - 86).forEach((ln) => {
-        text(ln, RX + 86, yr, `13px ${FONT}`);
-        yr += 18;
-      });
-    };
-    rkv('Pelanggan', n.customer.name);
-    rkv('Telp', n.customer.phone ? notaNormPhone(n.customer.phone).display : '');
-    rkv('Tgl', `${dateStr}  ${timeStr}`);
-    let y = Math.max(yl, yr) + 10;
-    if (n.status === 'batal') {
-      ops.push({ box: true, y: y - 4, h: 30, color: '#b91c1c' });
-      text('NOTA DIBATALKAN', W / 2, y + 16, `bold 15px ${FONT}`, '#b91c1c', 'center');
-      y += 40;
+    y += 22;
+    text(NOTA_CONFIG.title, W / 2, y, `bold 22px ${FONT}`, '#111', 'center');
+    y += 24;
+    if (n.branch) {
+      text(n.branch, W / 2, y, `15px ${FONT}`, '#444', 'center');
+      y += 20;
     }
-    // ----- tabel
-    hr(y);
-    y += 20;
-    text('Perincian', P + 22, y, `13px ${FONT}`, '#444');
-    text('Qty', QX, y, `13px ${FONT}`, '#444', 'right');
-    text('Price', PX, y, `13px ${FONT}`, '#444', 'right');
-    text('Total', TX, y, `13px ${FONT}`, '#444', 'right');
-    y += 10;
+    y += 4;
     hr(y);
     y += 22;
-    const descW = QX - 46 - (P + 22);
-    let qtySum = 0;
-    n.items.forEach((it, i) => {
-      qtySum += Number(it.qty) || 0;
-      const lines = wrap(it.desc, `14px ${FONT}`, descW);
-      text(String(i + 1), P, y, `14px ${FONT}`);
-      text(String(it.qty), QX, y, `14px ${FONT}`, '#111', 'right');
-      text(num(it.price), PX, y, `14px ${FONT}`, '#111', 'right');
-      text(num(notaLineSubtotal(it)), TX, y, `14px ${FONT}`, '#111', 'right');
-      lines.forEach((ln, k) => {
-        text(ln, P + 22, y, `14px ${FONT}`);
-        if (k < lines.length - 1) y += 18;
+    const kv = (k, v) => {
+      if (!v) return;
+      wrap(v, `600 14px ${FONT}`, W - P * 2 - 120).forEach((ln, i) => {
+        if (i === 0) text(k, P, y, `13px ${FONT}`, '#777');
+        text(ln, P + 120, y, `600 14px ${FONT}`);
+        y += 20;
       });
-      y += 17;
+    };
+    kv('No. Nota', n.id);
+    kv('Tanggal', fmtDT(n.createdAt));
+    kv('Petugas', `${n.fl.name} (${n.fl.role})`);
+    kv('Pelanggan', n.customer.name);
+    kv('No. HP', n.customer.phone ? notaNormPhone(n.customer.phone).display : '');
+    kv('No. Customer', n.customer.code);
+    y += 2;
+    hr(y);
+    y += 22;
+    n.items.forEach((it, i) => {
+      wrap(`${i + 1}. ${it.desc}`, `bold 15px ${FONT}`, W - P * 2).forEach((ln) => {
+        text(ln, P, y, `bold 15px ${FONT}`);
+        y += 20;
+      });
+      text(`${it.qty} x ${rp(it.price)}`, P + 16, y, `14px ${FONT}`, '#444');
+      text(rp(notaLineSubtotal(it)), W - P, y, `bold 15px ${FONT}`, '#111', 'right');
+      y += 19;
       const tp = NOTA_PRICE_TYPES.find((x) => x.id === it.priceType);
-      const tag = [tp && it.priceType !== 'normal' ? tp.label : '', it.note].filter(Boolean).join(' · ');
+      const tag = [tp && it.priceType !== 'normal' ? tp.label.toUpperCase() : '', it.note].filter(Boolean).join(' · ');
       if (tag)
-        wrap(tag, `11.5px ${FONT}`, descW).forEach((ln) => {
-          text(ln, P + 22, y, `11.5px ${FONT}`, '#666');
-          y += 15;
+        wrap(tag, `12px ${FONT}`, W - P * 2 - 16).forEach((ln) => {
+          text(ln, P + 16, y, `12px ${FONT}`, '#b45309');
+          y += 16;
         });
       if (it.serial) {
-        text(`SN/IMEI: ${it.serial}`, P + 22, y, `11.5px ui-monospace,Consolas,monospace`, '#555');
-        y += 15;
+        text(`SN/IMEI: ${it.serial}`, P + 16, y, `12px ui-monospace,Consolas,monospace`, '#555');
+        y += 16;
       }
       y += 8;
     });
-    hr(y);
-    y += 24;
-    // ----- ringkasan
-    const sales = wrap(n.fl.name, `600 13px ${FONT}`, RX - P - 52);
-    text('Sales', P, y, `13px ${FONT}`, '#444');
-    sales.forEach((ln, k) => text(ln, P + 52, y + k * 17, `600 13px ${FONT}`));
-    text('Sub Total', RX, y, `13px ${FONT}`, '#444');
-    text(num(t.total), TX, y, `13px ${FONT}`, '#111', 'right');
-    const salesH = (sales.length - 1) * 17;
-    y += 22 + salesH;
-    text(`Total Qty  ${qtySum}.00`, P, y, `13px ${FONT}`, '#444');
-    if (t.state === 'dp' || t.state === 'belum') {
-      if (t.paid > 0) {
-        text('Dibayar', RX, y, `13px ${FONT}`, '#444');
-        text(num(t.paid), TX, y, `13px ${FONT}`, '#111', 'right');
+    hr(y, true);
+    y += 26;
+    text('TOTAL', P, y, `bold 18px ${FONT}`);
+    text(rp(t.total), W - P, y, `bold 20px ${FONT}`, '#111', 'right');
+    y += 26;
+    n.payments
+      .filter((p) => Number(p.amount) > 0)
+      .forEach((p) => {
+        text(p.method + (p.ref ? ` (${p.ref})` : ''), P, y, `14px ${FONT}`, '#444');
+        text(rp(p.amount), W - P, y, `14px ${FONT}`, '#444', 'right');
+        y += 20;
+      });
+    if (t.state !== 'kosong') {
+      if (t.diff < 0) {
+        text('Kurang', P, y, `bold 14px ${FONT}`, '#b91c1c');
+        text(rp(-t.diff), W - P, y, `bold 14px ${FONT}`, '#b91c1c', 'right');
+        y += 20;
+      } else if (t.diff > 0) {
+        text('Kembalian', P, y, `14px ${FONT}`, '#444');
+        text(rp(t.diff), W - P, y, `14px ${FONT}`, '#444', 'right');
         y += 20;
       }
-      text('Sisa', RX, y, `bold 13px ${FONT}`, '#b91c1c');
-      text(num(-t.diff), TX, y, `bold 13px ${FONT}`, '#b91c1c', 'right');
-      y += 22;
-    } else if (t.state === 'lebih') {
-      text('Kembalian', RX, y, `13px ${FONT}`, '#444');
-      text(num(t.diff), TX, y, `13px ${FONT}`, '#111', 'right');
-      y += 22;
-    } else y += 22;
-    text('Total', RX, y, `bold 17px ${FONT}`);
-    text(num(t.total), TX, y, `bold 17px ${FONT}`, '#111', 'right');
-    y += 16;
+      text(NOTA_PAY_LABEL[t.state], W - P, y, `bold 13px ${FONT}`, t.state === 'lunas' ? '#15803d' : '#b45309', 'right');
+      y += 20;
+    }
     if (n.note) {
-      wrap('Catatan: ' + n.note, `12px ${FONT}`, W - P * 2).forEach((ln) => {
-        text(ln, P, y, `12px ${FONT}`, '#444');
-        y += 16;
+      y += 4;
+      wrap('Catatan: ' + n.note, `13px ${FONT}`, W - P * 2).forEach((ln) => {
+        text(ln, P, y, `13px ${FONT}`, '#444');
+        y += 18;
       });
     }
-    // ----- penutup
-    y += 14;
-    wrap(NOTA_PRINT.checkNote, `13px ${FONT}`, W - P * 2 - 40).forEach((ln) => {
-      text(ln, W / 2, y, `13px ${FONT}`, '#111', 'center');
-      y += 18;
+    y += 10;
+    const stMap = {
+      draft: ['DRAFT · BELUM DIAJUKAN', '#6b7280'],
+      diajukan: ['MENUNGGU VALIDASI KASIR', '#b45309'],
+      divalidasi: [`TERVALIDASI${n.validation ? ' · ' + n.validation.by : ''}`, '#15803d'],
+      selesai: [`SELESAI · No. Delivery ${n.delivery ? n.delivery.no : ''}`, '#15803d'],
+      batal: ['DIBATALKAN', '#b91c1c'],
+    };
+    const st = stMap[n.status] || stMap.draft;
+    ops.push({ box: true, y: y - 16, h: 30, color: st[1] });
+    text(st[0], W / 2, y + 4, `bold 14px ${FONT}`, st[1], 'center');
+    y += 36;
+    wrap(NOTA_CONFIG.footer, `11px ${FONT}`, W - P * 2).forEach((ln) => {
+      text(ln, W / 2, y, `11px ${FONT}`, '#888', 'center');
+      y += 15;
     });
-    y += 12;
-    const sg = NOTA_PRINT.signatures || [];
-    sg.forEach((l, k) => text(l, P + ((W - P * 2) * (k + 0.5)) / sg.length, y, `13px ${FONT}`, '#111', 'center'));
-    y += 64;
-    if (NOTA_PRINT.taxNote) {
-      text(NOTA_PRINT.taxNote, P, y, `italic 11.5px ${FONT}`, '#444');
-      y += 8;
-    }
     y += P - 6;
     const cv = document.createElement('canvas');
     cv.width = W * SC;
@@ -564,12 +522,13 @@
     c.fillRect(0, 0, W, y);
     ops.forEach((o) => {
       if (o.hr) {
-        c.strokeStyle = '#555';
-        c.lineWidth = 1;
+        c.strokeStyle = '#999';
+        c.setLineDash(o.dash ? [4, 3] : []);
         c.beginPath();
         c.moveTo(P, o.y);
         c.lineTo(W - P, o.y);
         c.stroke();
+        c.setLineDash([]);
       } else if (o.box) {
         c.strokeStyle = o.color;
         c.lineWidth = 1.5;
@@ -629,7 +588,7 @@
     return `<div class="ncard" data-id="${esc(n.id)}">
       <div class="ncard-top"><b>${esc(n.id)}</b>${badge(n)}</div>
       <div class="ncard-mid">${esc(n.customer.name || '(tanpa nama)')} · ${rp(t.total)}</div>
-      <div class="ncard-sub">${esc(n.fl.name)} · ${fmtDT(n.createdAt)}${n.delivery ? ' · DLV ' + esc(n.delivery.no) : ''}</div>
+      <div class="ncard-sub">${esc(n.fl.name)} (${esc(n.fl.role)}) · ${fmtDT(n.createdAt)}${n.delivery ? ' · DLV ' + esc(n.delivery.no) : ''}</div>
       ${flags.length ? `<div class="ncard-flags">${flags.map(esc).join(' · ')}</div>` : ''}
       <div class="btn-row"><button type="button" class="b-ghost" data-act="openCard" data-id="${esc(n.id)}">Buka</button><button type="button" class="b-ghost" data-act="dlCard" data-id="${esc(n.id)}">Unduh nota</button></div>
     </div>`;
@@ -669,7 +628,7 @@
       if (f.status === 'aktif' && !['diajukan', 'divalidasi'].includes(n.status)) return false;
       if (!['aktif', 'semua'].includes(f.status) && n.status !== f.status) return false;
       if (!q) return true;
-      const hay = [n.id, n.customer.name, n.fl.name, (n.delivery && n.delivery.no) || '', ...n.items.map((i) => i.desc + ' ' + i.serial)]
+      const hay = [n.id, n.customer.name, n.customer.code, n.fl.name, n.branch, (n.delivery && n.delivery.no) || '', ...n.items.map((i) => i.desc + ' ' + i.serial)]
         .join(' ')
         .toLowerCase();
       return hay.includes(q) || (qd.length >= 4 && n.customer.phone.replace(/\D/g, '').includes(qd));
@@ -763,7 +722,7 @@
     if (el.dataset.f) {
       setPath(n, el.dataset.f, el.value);
       touch();
-      if (el.dataset.f === 'fl.name') setPrefs({ flName: n.fl.name });
+      if (el.dataset.f === 'fl.name' || el.dataset.f === 'branch') setPrefs({ flName: n.fl.name, branch: n.branch, role: n.fl.role });
       return;
     }
     const li = lineIdx(el);
@@ -811,23 +770,6 @@
       return;
     }
     if (!S.cur || S.tab !== 'edit') return;
-    if (el.classList.contains('fl-sel')) {
-      if (el.value === '__manual') {
-        S.manualName = true;
-        S.cur.fl.name = '';
-      } else {
-        S.manualName = false;
-        S.cur.fl.name = el.value;
-        setPrefs({ flName: el.value });
-      }
-      touch();
-      renderEditor();
-      if (S.manualName) {
-        const m = body.querySelector('[data-f="fl.name"]');
-        if (m) m.focus();
-      }
-      return;
-    }
     const li = lineIdx(el);
     if (li >= 0 && el.classList.contains('nl-type')) {
       S.cur.items[li].priceType = el.value;
@@ -900,6 +842,12 @@
     switch (act) {
       case 'tab':
         if (b.dataset.tab !== S.tab) switchTab(b.dataset.tab);
+        break;
+      case 'role':
+        n.fl.role = b.dataset.role;
+        setPrefs({ role: n.fl.role });
+        touch();
+        renderEditor();
         break;
       case 'addLine':
         n.items.push(notaEmptyItem());
