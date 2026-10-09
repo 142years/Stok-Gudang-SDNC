@@ -10,6 +10,7 @@ const DELETE_SCOPES = {
   stock: { label: 'Stok & Harga', keys: ['inventory:latest'] },
   avail: { label: 'Stock Available', keys: ['stockavail:latest'] },
   barcode: { label: 'Data Barcode', keys: ['barcode:latest'] },
+  leasing: { label: 'Skema Leasing', keys: ['leasing:latest'] },
   reborn: { label: 'Price List Reborn', keys: ['rebornprice:latest', 'manualprice:latest'] }, // manualprice = data file lama, ikut dibersihkan
 };
 
@@ -76,6 +77,10 @@ function applyLocalDelete(scope) {
   } else if (scope === 'reborn') {
     REBORN_PRICE = { byCode: {} };
     rebornPriceMeta = null;
+  } else if (scope === 'leasing') {
+    LEASING = null;
+    leasingMeta = null;
+    if (typeof leasingRefresh === 'function') leasingRefresh();
   }
 }
 

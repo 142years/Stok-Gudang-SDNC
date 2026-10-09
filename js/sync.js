@@ -115,6 +115,11 @@ async function loadCatalog() {
   REBORN_PRICE = { byCode: (rp && rp.byCode) || {} };
   rebornPriceMeta = (rp && rp.meta) || null;
 
+  const lp = resolvePayload('leasing:latest', await fetchLatestPayload('leasing:latest'), 'Skema Leasing', cloudErrors, notes);
+  LEASING = lp && lp.items ? { programs: lp.programs || [], items: lp.items, note: lp.note || '' } : null;
+  leasingMeta = (lp && lp.meta) || null;
+  if (typeof leasingRefresh === 'function') leasingRefresh();
+
   if (cloudErrors.length) {
     console.error('Sebagian data gagal dimuat dari server (dipakai cadangan lokal):', cloudErrors);
     statusEl.textContent = `⚠ Gagal memuat dari server, dipakai data lokal perangkat ini: ${cloudErrors.join(' | ')}`;

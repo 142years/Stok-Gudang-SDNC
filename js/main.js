@@ -114,6 +114,15 @@ const AUX_SYNC = [
       else renderEmpty();
     },
   },
+  {
+    key: 'leasing:latest',
+    meta: () => leasingMeta,
+    apply: (p) => {
+      LEASING = p.items ? { programs: p.programs || [], items: p.items, note: p.note || '' } : null;
+      leasingMeta = p.meta || null;
+      if (typeof leasingRefresh === 'function') leasingRefresh();
+    },
+  },
 ];
 
 setInterval(async function () {

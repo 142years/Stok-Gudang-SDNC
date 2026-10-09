@@ -49,6 +49,7 @@ const snCheckBadge = document.getElementById('snCheckBadge');
 const stockAvailCheckBadge = document.getElementById('stockAvailCheckBadge');
 const barcodeCheckBadge = document.getElementById('barcodeCheckBadge');
 const rebornPriceCheckBadge = document.getElementById('rebornPriceCheckBadge');
+const leasingCheckBadge = document.getElementById('leasingCheckBadge');
 
 function setCheckBadge(el, state, text) {
   el.className = 'upload-check show ' + state; // state: 'ok' | 'bad' | 'loading'

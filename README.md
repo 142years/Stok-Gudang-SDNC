@@ -42,3 +42,11 @@ Alur status: `Draft → Menunggu validasi → Divalidasi → Selesai (No. Delive
 - Setiap nota juga disalin di perangkat; kalau sinyal putus, data aman dan bisa dikirim ulang.
 - **Pengaturan ada di `js/nota-config.js`**: nama toko & data perusahaan di nota, **daftar nama sales (dropdown)**, teks bagian bawah nota.
 - File lain: `js/nota-core.js` (logika), `js/nota-ui.js` (tampilan & gambar nota), `css/nota.css`.
+
+## Skema Leasing (biaya admin per produk)
+Tombol **💳 Leasing** di header (bisa dipakai frontliner dan staf). Cari produk → lihat biaya admin per lembaga/program (Indodana, SPayLater/ShopeePay, Kredivo, KreditPlus, Samsung Finance+, HCI, Akulaku, bank, dll.).
+- Sumber data: file `SKEMA_LEASING_….xlsx` (sheet REKAP). **Staf** mengunggahnya lewat “Upload File” (dikenali otomatis dari judul kolom), disimpan di Supabase key `leasing:latest`.
+- Arti sel: angka = biaya admin (Rp) · ✔ = disubsidi/gratis admin · ❌ = tidak ada subsidi → berlaku biaya Sub Leasing BAF/MEGAZIP (kolom E). Teks bisa diubah di `js/leasing-config.js`.
+- Yang **tidak** disimpan ke web (data internal): SRP, PRICE AFTER CB, FEE LEASING, SISA MARGIN.
+- Kolom yang disembunyikan di Excel dianggap program tidak aktif dan tidak tampil untuk frontliner (staf bisa menampilkannya lewat opsi di halaman produk; atau ubah `showHiddenPrograms` di config).
+- File: `js/leasing-config.js` (pengaturan), `js/leasing-core.js` (pembaca Excel & pencarian), `js/leasing-ui.js` (tampilan), `css/leasing.css`.

@@ -56,6 +56,7 @@ function refreshUploadBadges() {
     rebornPriceMeta && rebornPriceMeta.fileName,
     rebornPriceMeta && rebornPriceMeta.updatedAt,
   );
+  badgeFromMeta(leasingCheckBadge, leasingMeta && leasingMeta.fileName, leasingMeta && leasingMeta.updatedAt);
 }
 
 function renderMeta() {

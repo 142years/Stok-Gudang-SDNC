@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="css/theme.css?v=1" />
 <link rel="stylesheet" href="css/style.css?v=3" />
 <link rel="stylesheet" href="css/nota.css?v=1" />
+<link rel="stylesheet" href="css/leasing.css?v=1" />
 </head>
 <body>
 <div id="app">
@@ -36,6 +37,7 @@
  <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
  <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
  </button>
+ <button id="leasingOpenBtn" type="button">💳 Leasing</button>
  <button id="notaOpenBtn" type="button">📝 Nota</button>
  <button id="staffToggle" type="button">Staff Gudang</button>
  </div>
@@ -71,6 +73,10 @@
  <div class="upload-status-item">
  <span class="upload-status-label">Price List Reborn</span>
  <span id="rebornPriceCheckBadge" class="upload-check"></span>
+ </div>
+ <div class="upload-status-item">
+ <span class="upload-status-label">Skema Leasing</span>
+ <span id="leasingCheckBadge" class="upload-check"></span>
  </div>
  </div>
  </div>
@@ -165,6 +171,7 @@
  <label class="delete-opt"><input type="checkbox" name="delScope" value="stock" checked /><span><b>Stok &amp; Harga</b><small>Price List + Serial Number</small></span></label>
  <label class="delete-opt"><input type="checkbox" name="delScope" value="avail" /><span><b>Stock Available</b><small>Stok cabang lain</small></span></label>
  <label class="delete-opt"><input type="checkbox" name="delScope" value="barcode" /><span><b>Data Barcode</b><small>Barcode per kode barang</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="leasing" /><span><b>Skema Leasing</b><small>Biaya admin per produk &amp; lembaga</small></span></label>
  <label class="delete-opt"><input type="checkbox" name="delScope" value="reborn" /><span><b>Price List Reborn</b><small>Harga Retail untuk barang cabang lain / indent</small></span></label>
  <div id="deleteMsg" role="status"></div>
  <div class="pin-actions">
@@ -187,6 +194,14 @@
  </div>
 </div>
 
+<!-- Skema Leasing -->
+<div id="leasingOverlay" role="dialog" aria-modal="true" aria-label="Skema Leasing">
+ <div id="leasingBox">
+  <div id="leasingHead"><div class="nota-title">Skema Leasing</div><button id="leasingCloseBtn" type="button" aria-label="Tutup">&times;</button></div>
+  <div id="leasingBody"></div>
+ </div>
+</div>
+
 <!-- Nota Digital -->
 <div id="notaOverlay" role="dialog" aria-modal="true" aria-label="Nota Digital">
  <div id="notaBox">
@@ -202,20 +217,23 @@
 <script src="js/errors.js?v=1"></script>
 <script src="js/theme.js?v=1"></script>
 <script src="js/config.js?v=1"></script>
-<script src="js/state.js?v=2"></script>
+<script src="js/state.js?v=3"></script>
+<script src="js/leasing-config.js?v=1"></script>
+<script src="js/leasing-core.js?v=1"></script>
 <script src="js/pricing.js?v=2"></script>
 <script src="js/helpers.js?v=1"></script>
 <script src="js/auth.js?v=2"></script>
-<script src="js/sync.js?v=3"></script>
-<script src="js/catalog.js?v=2"></script>
+<script src="js/sync.js?v=4"></script>
+<script src="js/catalog.js?v=3"></script>
 <script src="js/stock-opname.js?v=2"></script>
-<script src="js/upload.js?v=3"></script>
-<script src="js/delete.js?v=2"></script>
+<script src="js/upload.js?v=4"></script>
+<script src="js/delete.js?v=3"></script>
 <script src="js/search.js?v=2"></script>
-<script src="js/scanner.js?v=2"></script>
+<script src="js/scanner.js?v=3"></script>
+<script src="js/leasing-ui.js?v=1"></script>
 <script src="js/nota-config.js?v=1"></script>
 <script src="js/nota-core.js?v=2"></script>
 <script src="js/nota-ui.js?v=3"></script>
-<script src="js/main.js?v=3"></script>
+<script src="js/main.js?v=4"></script>
 </body>
 </html>

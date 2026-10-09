@@ -1,4 +1,4 @@
-// Upload & pembacaan file Excel (PL, SN, Stock Available, Barcode, Price List Reborn)
+// Upload & pembacaan file Excel (PL, SN, Stock Available, Barcode, Price List Reborn, Skema Leasing)
 let xlsxLoadPromise = null;
 function ensureXlsxLoaded() {
   if (window.XLSX) return Promise.resolve();
@@ -251,8 +251,57 @@ async function tryBuildCatalogFromPending() {
 
 // Deteksi jenis file berdasarkan header-nya, lalu proses & simpan ke slot yang sesuai.
 // Return: nama slot ('pl'/'sn'/'stockavail'/'barcode'/'rebornprice') kalau dikenali, atau null kalau tidak.
+// File skema leasing perlu dibaca langsung dari workbook (bukan hanya baris) karena butuh info
+// kolom yang disembunyikan & sel gabungan, serta nilai error #N/A harus dibuang (bukan dianggap angka).
+async function readLeasingFile(file) {
+  if (/\.csv$/i.test(file.name)) throw new Error('File skema leasing harus .xlsx (butuh info kolom tersembunyi).');
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellStyles: true });
+  const name = wb.SheetNames.find((n) => /rekap/i.test(n)) || wb.SheetNames[0];
+  return leasingParseSheet(XLSX, wb.Sheets[name]);
+}
+
 async function detectAndProcessFile(file) {
   const rows = await readSheetFile(file);
+
+  if (leasingIsSheetRows(rows)) {
+    setCheckBadge(leasingCheckBadge, 'loading', 'Membaca skema leasing...');
+    const parsed = await readLeasingFile(file);
+    if (!parsed || !parsed.items.length) {
+      const msg = 'Tidak ada produk yang terbaca dari file skema leasing.';
+      setCheckBadge(leasingCheckBadge, 'bad', `✗ ${msg}`);
+      return { type: 'leasing', ok: false, message: msg };
+    }
+    const st = parsed.stats;
+    const summary =
+      `${st.products} produk, ${st.programs} program` +
+      (st.hiddenPrograms ? ` (${st.hiddenPrograms} disembunyikan di Excel)` : '') +
+      (st.conflicts ? `, ${st.conflicts} baris ganda berbeda isi` : '');
+    LEASING = { programs: parsed.programs, items: parsed.items, note: parsed.note };
+    leasingMeta = {
+      fileName: file.name,
+      updatedAt: new Date().toISOString(),
+      products: st.products,
+      programs: st.programs,
+      hiddenPrograms: st.hiddenPrograms,
+      conflicts: st.conflicts,
+    };
+    setCheckBadge(leasingCheckBadge, 'loading', 'Menyimpan ke server...');
+    const result = await saveCatalogToCloud('leasing:latest', {
+      programs: LEASING.programs,
+      items: LEASING.items,
+      note: LEASING.note,
+      meta: leasingMeta,
+    });
+    if (result.ok) {
+      setCheckBadge(leasingCheckBadge, 'ok', `✓ ${file.name}`);
+      leasingCheckBadge.title = summary;
+    } else {
+      setCheckBadge(leasingCheckBadge, 'bad', `✗ Gagal simpan ke server: ${result.message}`);
+    }
+    if (typeof leasingRefresh === 'function') leasingRefresh();
+    return { type: 'leasing', ok: result.ok, message: result.message || '', summary };
+  }
 
   if (validatePlRows(rows)) {
     pendingPlRows = rows;
