@@ -3,9 +3,8 @@
 // ===== Price List Reborn =====
 // Sumber: file "Reborn_PriceList" (kolom: #, Item No., Item Description, Retail, Gro-1 ... Gro-6, Retail-AMT).
 // Yang dipakai HANYA kolom "Retail", dicocokkan lewat kode barang (Item No.).
-// Fungsinya melengkapi harga barang yang TIDAK punya harga di Price List utama (umumnya barang
-// dari cabang lain / status INDENT). Harga dari Price List utama TIDAK PERNAH ditimpa — file ini
-// hanya mengisi yang kosong. Menggantikan file lama "Manual Serial Number / ACC / PriceList".
+// Ini SATU-SATUNYA sumber harga (file Price List utama sudah tidak dipakai; stok dari Stock Available).
+// Menggantikan file lama "Manual Serial Number / ACC / PriceList".
 // Disimpan ringkas: hanya barang dengan harga Retail > 0.
 let REBORN_PRICE = { byCode: {} };
 let rebornPriceMeta = null; // { fileName, updatedAt, products, rows }
@@ -17,7 +16,7 @@ function normCode(s) {
     .trim();
 }
 
-// Return { price, source } -> source: 'pl' (Price List utama) | 'reborn' | null
+// Return { price, source } -> source: 'pl' (harga bawaan katalog lama, bila ada) | 'reborn' | null
 function getEffectivePrice(it) {
   if (it && Number(it.price) > 0) return { price: Number(it.price), source: 'pl' };
   const m = lookupRebornPrice(it);

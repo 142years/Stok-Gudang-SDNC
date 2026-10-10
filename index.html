@@ -24,7 +24,6 @@
 </head>
 <body>
 <div id="app">
- <div id="staleBanner" class="stale-banner">Data belum diperbarui hari ini — mohon konfirmasi ke gudang</div>
  <header>
  <div>
  <h1>Cek Harga & Stok</h1>
@@ -54,10 +53,6 @@
  </div>
  <div id="uploadStatus"></div>
  <div class="upload-status-grid">
- <div class="upload-status-item">
- <span class="upload-status-label">Price List</span>
- <span id="plCheckBadge" class="upload-check"></span>
- </div>
  <div class="upload-status-item">
  <span class="upload-status-label">Serial Number</span>
  <span id="snCheckBadge" class="upload-check"></span>
@@ -168,11 +163,11 @@
  <div id="deleteBox" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
  <div class="pin-label" id="deleteTitle">Hapus data di server</div>
  <div class="delete-hint">Pilih data yang mau dihapus. Penghapusan berlaku untuk semua perangkat. Data Stock Opname Harian tidak ikut terhapus (hapus lewat menu Stock Opname).</div>
- <label class="delete-opt"><input type="checkbox" name="delScope" value="stock" checked /><span><b>Stok &amp; Harga</b><small>Price List + Serial Number</small></span></label>
- <label class="delete-opt"><input type="checkbox" name="delScope" value="avail" /><span><b>Stock Available</b><small>Stok cabang lain</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="stock" checked /><span><b>Katalog Serial Number</b><small>Data Serial Number (FIFO)</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="avail" /><span><b>Stock Available</b><small>Stok sendiri &amp; cabang lain</small></span></label>
  <label class="delete-opt"><input type="checkbox" name="delScope" value="barcode" /><span><b>Data Barcode</b><small>Barcode per kode barang</small></span></label>
  <label class="delete-opt"><input type="checkbox" name="delScope" value="leasing" /><span><b>Skema Leasing</b><small>Biaya admin per produk &amp; lembaga</small></span></label>
- <label class="delete-opt"><input type="checkbox" name="delScope" value="reborn" /><span><b>Price List Reborn</b><small>Harga Retail untuk barang cabang lain / indent</small></span></label>
+ <label class="delete-opt"><input type="checkbox" name="delScope" value="reborn" /><span><b>Price List Reborn</b><small>Harga Retail semua barang</small></span></label>
  <div id="deleteMsg" role="status"></div>
  <div class="pin-actions">
  <button id="deleteCancel" type="button" class="pin-btn ghost">Tutup</button>
@@ -217,23 +212,24 @@
 <script src="js/errors.js?v=1"></script>
 <script src="js/theme.js?v=1"></script>
 <script src="js/config.js?v=1"></script>
-<script src="js/state.js?v=3"></script>
+<script src="js/state.js?v=4"></script>
+<script src="js/stock-config.js?v=1"></script>
 <script src="js/leasing-config.js?v=1"></script>
 <script src="js/leasing-core.js?v=1"></script>
 <script src="js/pricing.js?v=2"></script>
 <script src="js/helpers.js?v=1"></script>
 <script src="js/auth.js?v=2"></script>
-<script src="js/sync.js?v=4"></script>
-<script src="js/catalog.js?v=3"></script>
+<script src="js/sync.js?v=5"></script>
+<script src="js/catalog.js?v=4"></script>
 <script src="js/stock-opname.js?v=2"></script>
-<script src="js/upload.js?v=4"></script>
-<script src="js/delete.js?v=3"></script>
-<script src="js/search.js?v=2"></script>
+<script src="js/upload.js?v=5"></script>
+<script src="js/delete.js?v=4"></script>
+<script src="js/search.js?v=3"></script>
 <script src="js/scanner.js?v=3"></script>
 <script src="js/leasing-ui.js?v=1"></script>
 <script src="js/nota-config.js?v=1"></script>
 <script src="js/nota-core.js?v=2"></script>
 <script src="js/nota-ui.js?v=3"></script>
-<script src="js/main.js?v=4"></script>
+<script src="js/main.js?v=5"></script>
 </body>
 </html>

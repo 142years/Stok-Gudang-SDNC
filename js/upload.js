@@ -1,4 +1,4 @@
-// Upload & pembacaan file Excel (PL, SN, Stock Available, Barcode, Price List Reborn, Skema Leasing)
+// Upload & pembacaan file Excel (Serial Number, Stock Available, Barcode, Price List Reborn, Skema Leasing)
 let xlsxLoadPromise = null;
 function ensureXlsxLoaded() {
   if (window.XLSX) return Promise.resolve();
@@ -30,10 +30,16 @@ function validateStockAvailRows(rows) {
   return rows && rows.length > 0 && headerContainsAll(rows[0], ['warehouse code', 'item no', 'available']);
 }
 
-// Kolom file "Stock Available": #, Warehouse Code, Item No., Item Description, Available, In Stock, Allocated
+// Kolom file "Stock Available": #, Warehouse Code, Item No., Item Description, Available, In Stock, Allocated, Item Cost
+// Satu file ini memuat stok SEMUA gudang:
+//  - gudang SDNC yang terdaftar di STOCK_OWN_WAREHOUSES (js/stock-config.js) -> stok sendiri ("own": Available & Allocated)
+//  - gudang SDNC lain (demo/rusak) -> tidak dihitung
+//  - gudang cabang lain -> "map" (dipakai untuk status INDENT)
+// Kolom Item Cost (harga pokok) sengaja tidak dibaca.
 function parseStockAvailRows(rows) {
   const map = {};
   const descMap = {};
+  const own = {};
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     if (!r || !r[2]) continue;
@@ -41,13 +47,27 @@ function parseStockAvailRows(rows) {
     const itemCode = String(r[2]).trim();
     const desc = r[3] ? String(r[3]).trim() : '';
     const available = Number(r[4]) || 0;
+    const allocated = Number(r[6]) || 0;
     if (desc && !descMap[itemCode]) descMap[itemCode] = desc;
-    if (!whcode || whcode.toUpperCase().startsWith('SDNC')) continue; // gudang kami sendiri, dilewati
+    if (!whcode) continue;
+    const wh = whcode.toUpperCase();
+    if (wh.startsWith('SDNC')) {
+      if (STOCK_OWN_WAREHOUSES.includes(wh)) {
+        const a = Math.max(0, available),
+          l = Math.max(0, allocated);
+        if (a > 0 || l > 0) {
+          if (!own[itemCode]) own[itemCode] = { a: 0, l: 0 };
+          own[itemCode].a += a;
+          own[itemCode].l += l;
+        }
+      }
+      continue; // SDNC.DEM / SDNC.RUS dst: tidak dihitung
+    }
     if (available <= 0) continue;
     if (!map[itemCode]) map[itemCode] = {};
     map[itemCode][whcode] = (map[itemCode][whcode] || 0) + available;
   }
-  return { map, descMap };
+  return { map, descMap, own };
 }
 
 function validateBarcodeRows(rows) {
@@ -92,32 +112,13 @@ function parseRebornPriceRows(rows) {
   return { byCode, rows: used };
 }
 
-// Ringkasan perbandingan dengan Price List utama yang sudah ada di catalog (hanya informasi,
-// tidak memblokir upload):
-//  - comparable / match / mismatch: barang yang punya harga di PL utama DAN di file Reborn
-//  - fill: barang TANPA harga di PL utama yang sekarang terisi dari file Reborn
-//  - stillMissing: barang tanpa harga di PL utama dan tetap tidak ada di file Reborn
-function reconcileRebornPrices(parsed) {
+// Jumlah barang ber-stok di katalog yang belum punya harga Retail di file Reborn (hanya informasi).
+function countStockedWithoutRebornPrice(parsed) {
+  if (!(catalog && catalog.items)) return null;
   const store = { byCode: parsed.byCode };
-  const res = { comparable: 0, match: 0, mismatch: 0, fill: 0, stillMissing: 0, hasCatalog: !!(catalog && catalog.items) };
-  if (!res.hasCatalog) return res;
-  catalog.items.forEach((it) => {
-    const m = lookupRebornPrice(it, store);
-    if (Number(it.price) > 0) {
-      if (m) {
-        res.comparable++;
-        if (Math.round(m) === Math.round(Number(it.price))) res.match++;
-        else res.mismatch++;
-      }
-    } else if (m) res.fill++;
-    else res.stillMissing++;
-  });
-  return res;
+  return catalog.items.filter((it) => (it.available > 0 || it.allocatedOwn > 0) && !lookupRebornPrice(it, store)).length;
 }
 
-// Gabungkan hasil deteksi cabang lain dari SN dengan data Stock Available.
-// Kalau ada cabang yang sama muncul di keduanya, nilai dari Stock Available yang dipakai
-// (dianggap lebih lengkap/terbaru), sisanya digabung (union).
 function mergeOthers(snOthers, stockOthers) {
   if (!snOthers && !stockOthers) return null;
   const merged = Object.assign({}, snOthers || {}, stockOthers || {});
@@ -129,30 +130,41 @@ function mergeOthers(snOthers, stockOthers) {
 function recomputeOthersWithStockAvail() {
   if (!catalog || !catalog.items) return;
   const existingCodes = new Set();
+  const applyOwn = stockAvailOwn !== null; // null = data Stock Available lama (belum ada stok sendiri): jangan ubah
   catalog.items.forEach((it) => {
     existingCodes.add(it.code);
     // snOthers null = memang tidak ada di SN (bukan 'tidak diketahui'); hanya katalog lama tanpa field ini yang pakai others
     const base = it.snOthers !== undefined ? it.snOthers : it.others || null;
     it.others = mergeOthers(base, stockAvailMap[it.code]);
+    if (applyOwn) {
+      const o = stockAvailOwn[it.code];
+      it.available = o ? o.a : 0;
+      it.allocatedOwn = o ? o.l : 0;
+      it.inOwnList = !!o;
+    }
   });
-  Object.keys(stockAvailMap).forEach((code) => {
+  // Barang yang ada di Stock Available (stok sendiri atau cabang lain) tapi belum ada di katalog
+  const extraCodes = new Set(Object.keys(stockAvailMap));
+  if (applyOwn) Object.keys(stockAvailOwn).forEach((c) => extraCodes.add(c));
+  extraCodes.forEach((code) => {
     if (existingCodes.has(code)) return;
+    const o = applyOwn ? stockAvailOwn[code] : null;
     catalog.items.push({
       code,
       desc: stockAvailDesc[code] || '(tanpa nama)',
       price: null,
-      available: 0,
-      allocatedOwn: 0,
-      others: stockAvailMap[code],
+      available: o ? o.a : 0,
+      allocatedOwn: o ? o.l : 0,
+      others: stockAvailMap[code] || null,
       snOthers: null,
       otherUnits: null,
       ownUnits: null,
-      inOwnList: false,
+      inOwnList: !!o,
       fromStockAvail: true,
     });
   });
   // Buang barang yang HANYA muncul karena Stock Available, kalau datanya sudah tidak ada
-  catalog.items = catalog.items.filter((it) => !(it.fromStockAvail && !it.others));
+  catalog.items = catalog.items.filter((it) => !(it.fromStockAvail && !it.others && !(it.available > 0 || it.allocatedOwn > 0)));
   if (searchInput.value.trim()) doSearch();
   else renderEmpty();
 }
@@ -225,15 +237,16 @@ function readSheetFile(file) {
   });
 }
 
-async function tryBuildCatalogFromPending() {
-  if (!pendingPlRows || !pendingSnRows) return;
+async function tryBuildCatalogFromSn() {
+  if (!pendingSnRows) return;
   try {
-    const combinedName = `${pendingPlName} + ${pendingSnName}`;
-    catalog = buildCatalog(pendingPlRows, pendingSnRows, combinedName);
+    const name = pendingSnName;
+    catalog = buildCatalog(pendingSnRows, name);
+    recomputeOthersWithStockAvail(); // isi stok sendiri & cabang lain dari Stock Available sebelum disimpan
     const result = await saveCatalogToCloud('inventory:latest', catalog);
     renderMeta();
     statusEl.textContent = result.ok
-      ? `Data berhasil disinkron ke cloud (${combinedName}) — semua pengguna link akan melihat data ini.`
+      ? `Data berhasil disinkron ke cloud (${name}) — semua pengguna link akan melihat data ini.`
       : `GAGAL sinkron ke cloud: ${result.message} — Data cuma tersimpan di device ini.`;
     openFifo.clear();
     openBranches.clear();
@@ -242,17 +255,11 @@ async function tryBuildCatalogFromPending() {
   } catch (err) {
     statusEl.textContent = 'Gagal memproses data: ' + err.message;
   } finally {
-    pendingPlRows = null;
     pendingSnRows = null;
-    pendingPlName = null;
     pendingSnName = null;
   }
 }
 
-// Deteksi jenis file berdasarkan header-nya, lalu proses & simpan ke slot yang sesuai.
-// Return: nama slot ('pl'/'sn'/'stockavail'/'barcode'/'rebornprice') kalau dikenali, atau null kalau tidak.
-// File skema leasing perlu dibaca langsung dari workbook (bukan hanya baris) karena butuh info
-// kolom yang disembunyikan & sel gabungan, serta nilai error #N/A harus dibuang (bukan dianggap angka).
 async function readLeasingFile(file) {
   if (/\.csv$/i.test(file.name)) throw new Error('File skema leasing harus .xlsx (butuh info kolom tersembunyi).');
   const buf = await file.arrayBuffer();
@@ -304,10 +311,11 @@ async function detectAndProcessFile(file) {
   }
 
   if (validatePlRows(rows)) {
-    pendingPlRows = rows;
-    pendingPlName = file.name;
-    setCheckBadge(plCheckBadge, 'ok', `✓ ${file.name}`);
-    return { type: 'pl', ok: true };
+    return {
+      type: 'pl',
+      ok: false,
+      message: 'File Price List sudah tidak dipakai — stok diambil dari Stock Available, harga dari Price List Reborn',
+    };
   }
   if (validateSnRows(rows)) {
     pendingSnRows = rows;
@@ -316,14 +324,16 @@ async function detectAndProcessFile(file) {
     return { type: 'sn', ok: true };
   }
   if (validateStockAvailRows(rows)) {
-    const { map, descMap } = parseStockAvailRows(rows);
+    const { map, descMap, own } = parseStockAvailRows(rows);
     stockAvailMap = map;
     stockAvailDesc = descMap;
+    stockAvailOwn = own;
     stockAvailMeta = { fileName: file.name, updatedAt: new Date().toISOString() };
     setCheckBadge(stockAvailCheckBadge, 'loading', 'Menyimpan ke server...');
     const result = await saveCatalogToCloud('stockavail:latest', {
       map: stockAvailMap,
       descMap: stockAvailDesc,
+      own: stockAvailOwn,
       meta: stockAvailMeta,
     });
     if (result.ok) {
@@ -354,10 +364,11 @@ async function detectAndProcessFile(file) {
       setCheckBadge(rebornPriceCheckBadge, 'bad', `✗ ${msg}`);
       return { type: 'rebornprice', ok: false, message: msg };
     }
-    const rec = reconcileRebornPrices(parsed);
-    const summary = rec.hasCatalog
-      ? `${parsed.rows} harga Retail dibaca, ${rec.fill} barang tanpa harga di Price List utama jadi terisi, ${rec.stillMissing} masih kosong`
-      : `${parsed.rows} harga Retail dibaca (belum ada data Price List utama untuk dibandingkan)`;
+    const missing = countStockedWithoutRebornPrice(parsed);
+    const summary =
+      missing === null
+        ? `${parsed.rows} harga Retail dibaca`
+        : `${parsed.rows} harga Retail dibaca, ${missing} barang ber-stok belum punya harga`;
     REBORN_PRICE = { byCode: parsed.byCode };
     rebornPriceMeta = {
       fileName: file.name,
@@ -419,17 +430,17 @@ async function runUploadFiles(files) {
     }
   }
 
-  // PL+SN disimpan lewat jalur ini (bukan di dalam detectAndProcessFile) karena baru bisa
-  // digabung & disimpan setelah KEDUANYA lengkap. Fungsi ini sendiri yang akan menulis
-  // status akhir (berhasil/gagal lengkap dengan pesan error) ke statusEl.
-  const plSnPending = !!(pendingPlRows && pendingSnRows);
-  if (plSnPending) {
-    await tryBuildCatalogFromPending();
+  // Katalog (Serial Number) disimpan lewat jalur ini, setelah semua file selesai dibaca,
+  // supaya stok dari Stock Available yang diupload bersamaan sudah ikut terpakai.
+  // Fungsi ini sendiri yang menulis status akhir (berhasil/gagal) ke statusEl.
+  const snPending = !!pendingSnRows;
+  if (snPending) {
+    await tryBuildCatalogFromSn();
   }
   recomputeOthersWithStockAvail();
 
-  // Jangan timpa pesan sinkron PL/SN yang baru saja ditulis tryBuildCatalogFromPending di atas
-  if (!plSnPending) {
+  // Jangan timpa pesan sinkron yang baru saja ditulis tryBuildCatalogFromSn di atas
+  if (!snPending) {
     if (failList.length) {
       statusEl.textContent = `${okList.length} file berhasil diproses. ${failList.length} file bermasalah: ${failList.join(' | ')}`;
     } else {

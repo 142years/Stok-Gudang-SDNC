@@ -80,10 +80,7 @@ function renderBranchesToggle(it) {
 function renderItem(it) {
   const eff = getEffectivePrice(it);
   const priceStr = fmtRupiah(eff.price);
-  const priceNote =
-    eff.source === 'reborn'
-      ? '<div style="font-size:11px; color:var(--muted); margin-top:2px;">Harga Retail dari Price List Reborn (belum ada di Price List utama)</div>'
-      : '';
+  const priceNote = eff.price > 0 ? '' : '<div style="font-size:11px; color:var(--muted); margin-top:2px;">Harga belum ada di Price List Reborn</div>';
   let statusHtml;
   let isIndent = false;
   const readyCount = (it.available || 0) + (it.allocatedOwn || 0);
@@ -92,10 +89,8 @@ function renderItem(it) {
   } else if (it.others) {
     statusHtml = `<span class="badge indent">INDENT</span>`;
     isIndent = true;
-  } else if (it.inOwnList) {
-    statusHtml = `<span class="badge out">HABIS · tidak ada di cabang lain</span>`;
   } else {
-    statusHtml = `<span class="badge out">Tidak ada di price list ini</span>`;
+    statusHtml = `<span class="badge out">HABIS · tidak ada di cabang lain</span>`;
   }
   let barcodeHtml = '';
   if (staffMode) {

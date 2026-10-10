@@ -33,7 +33,6 @@ function getBarcodes(code) {
 }
 
 const resultsEl = document.getElementById('results');
-const staleBanner = document.getElementById('staleBanner');
 const metaDetail = document.getElementById('metaDetail');
 const statusEl = document.getElementById('uploadStatus');
 const searchInput = document.getElementById('searchInput');
@@ -44,7 +43,6 @@ const verifySection = document.getElementById('verifySection');
 const verifyInput = document.getElementById('verifyInput');
 const verifyResult = document.getElementById('verifyResult');
 const multiFileInput = document.getElementById('multiFileInput');
-const plCheckBadge = document.getElementById('plCheckBadge');
 const snCheckBadge = document.getElementById('snCheckBadge');
 const stockAvailCheckBadge = document.getElementById('stockAvailCheckBadge');
 const barcodeCheckBadge = document.getElementById('barcodeCheckBadge');
@@ -55,8 +53,6 @@ function setCheckBadge(el, state, text) {
   el.className = 'upload-check show ' + state; // state: 'ok' | 'bad' | 'loading'
   el.textContent = text;
 }
-let pendingPlRows = null,
-  pendingPlName = null;
 let pendingSnRows = null,
   pendingSnName = null;
 
@@ -65,6 +61,8 @@ let pendingSnRows = null,
 // Ini DIGABUNG (union, bukan menggantikan) dengan hasil deteksi cabang lain dari file SN,
 // supaya barang yang tidak punya data serial number di SN (misalnya aksesoris non-serial)
 // tetap bisa kedeteksi statusnya INDENT kalau memang ada stok di cabang lain.
+// Stok gudang sendiri dari Stock Available: { kode: {a: available, l: allocated} }. null = data lama tanpa field ini.
+let stockAvailOwn = null;
 let stockAvailMap = {}; // { itemCode: { whcode: qty } } — sudah dikecualikan whcode SDNC*
 let stockAvailDesc = {}; // { itemCode: desc }
 let stockAvailMeta = null; // { fileName, updatedAt }

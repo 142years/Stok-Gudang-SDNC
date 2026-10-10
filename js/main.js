@@ -4,7 +4,6 @@ if (window.matchMedia && matchMedia('(pointer:fine)').matches) searchInput.focus
 
 // Cek pergantian hari secara berkala, supaya banner tetap akurat
 // walau sesi dibiarkan terbuka melewati tengah malam.
-setInterval(updateStaleBanner, 60000);
 
 // Cek pembaruan dari pengguna lain secara berkala, agar sesi yang sudah terbuka
 // ikut ter-update tanpa perlu reload manual saat ada yang upload ATAU menghapus data.
@@ -90,6 +89,7 @@ const AUX_SYNC = [
     meta: () => stockAvailMeta,
     apply: (p) => {
       stockAvailMap = p.map || {};
+      stockAvailOwn = p.own || null;
       stockAvailDesc = p.descMap || {};
       stockAvailMeta = p.meta || null;
       recomputeOthersWithStockAvail();

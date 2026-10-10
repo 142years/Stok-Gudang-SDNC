@@ -1,20 +1,6 @@
-// Status data, badge upload, dan pembuatan katalog (PL + SN)
+// Status data, badge upload, dan pembuatan katalog (Serial Number; stok dari Stock Available, harga dari Price List Reborn)
 function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-function updateStaleBanner() {
-  if (!catalog || !catalog.updatedAt) {
-    staleBanner.classList.remove('show');
-    return;
-  }
-  const updated = new Date(catalog.updatedAt);
-  const now = new Date();
-  if (isNaN(updated.getTime()) || isSameDay(updated, now)) {
-    staleBanner.classList.remove('show');
-  } else {
-    staleBanner.classList.add('show');
-  }
 }
 
 // Tampilkan badge "✓ nama file" dari data yang tersimpan (cloud/lokal), bukan hanya saat upload.
@@ -35,15 +21,12 @@ function badgeFromMeta(el, name, updatedAt) {
 }
 
 function refreshUploadBadges() {
-  let plName = pendingPlName || null,
-    snName = pendingSnName || null;
-  if (catalog && catalog.fileName) {
-    const parts = String(catalog.fileName).split(' + ');
-    if (!plName) plName = parts[0] || null;
-    if (!snName) snName = parts.length > 1 ? parts.slice(1).join(' + ') : parts[0];
+  let snName = pendingSnName || null;
+  if (catalog && catalog.fileName && !snName) {
+    const parts = String(catalog.fileName).split(' + '); // katalog lama berisi "PL + SN"
+    snName = parts.length > 1 ? parts.slice(1).join(' + ') : parts[0];
   }
   const when = catalog ? catalog.updatedAt : null;
-  badgeFromMeta(plCheckBadge, plName, when);
   badgeFromMeta(snCheckBadge, snName, when);
   badgeFromMeta(
     stockAvailCheckBadge,
@@ -62,13 +45,12 @@ function refreshUploadBadges() {
 function renderMeta() {
   if (!catalog) {
     metaDetail.textContent = 'Belum ada data tersimpan';
-    updateStaleBanner();
     return;
   }
-  const d = new Date(catalog.updatedAt);
+  const when = (stockAvailMeta && stockAvailMeta.updatedAt) || catalog.updatedAt;
+  const d = new Date(when);
   const dateStr = d.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-  metaDetail.textContent = `Update terakhir ${dateStr} · ${catalog.items.length} item`;
-  updateStaleBanner();
+  metaDetail.textContent = `${stockAvailMeta ? 'Stok' : 'Data'} diperbarui ${dateStr} · ${catalog.items.length} item`;
 }
 
 function renderEmpty() {
@@ -85,28 +67,7 @@ function renderEmpty() {
   footNote.textContent = '';
 }
 
-function buildCatalog(plRows, snRows, fileName) {
-  const plMap = {};
-  for (let i = 1; i < plRows.length; i++) {
-    const r = plRows[i];
-    if (!r || !r[1]) continue;
-    const itemNo = String(r[1]).trim();
-    const desc = r[2] ? String(r[2]).trim() : '';
-    const whcode = r[3] ? String(r[3]).trim() : '';
-    const available = Number(r[5]) || 0;
-    const allocated = Number(r[6]) || 0;
-    const instock = Number(r[7]) || 0;
-    const price = Number(r[8]) || 0;
-    if (!plMap[itemNo])
-      plMap[itemNo] = { desc: '', price: 0, totalAvailable: 0, totalAllocated: 0, totalInStock: 0, locations: [] };
-    plMap[itemNo].totalAvailable += available;
-    plMap[itemNo].totalAllocated += allocated;
-    plMap[itemNo].totalInStock += instock;
-    plMap[itemNo].locations.push({ whcode, available, instock });
-    if (desc) plMap[itemNo].desc = desc;
-    if (price) plMap[itemNo].price = price;
-  }
-
+function buildCatalog(snRows, fileName) {
   const snMap = {};
   const snDesc = {};
   const ownUnitsMap = {};
@@ -160,8 +121,8 @@ function buildCatalog(plRows, snRows, fileName) {
     ownUnitsMap[code].forEach((u, idx) => {
       serialIndex[u.serial] = {
         code,
-        desc: snDesc[code] || (plMap[code] ? plMap[code].desc : ''),
-        price: plMap[code] ? plMap[code].price : null,
+        desc: snDesc[code] || stockAvailDesc[code] || '',
+        price: null, // harga diambil dari Price List Reborn saat ditampilkan
         admissionDate: u.admissionDate,
         whcode: u.whcode,
         status: u.status,
@@ -173,7 +134,6 @@ function buildCatalog(plRows, snRows, fileName) {
   });
 
   const allCodes = new Set([
-    ...Object.keys(plMap),
     ...Object.keys(snMap),
     ...Object.keys(snDesc),
     ...Object.keys(ownUnitsMap),
@@ -181,20 +141,19 @@ function buildCatalog(plRows, snRows, fileName) {
   ]);
   const items = [];
   allCodes.forEach((code) => {
-    const pl = plMap[code];
     const snOthers = snMap[code] || null;
     items.push({
       code,
-      desc: (pl && pl.desc) || snDesc[code] || stockAvailDesc[code] || '(tanpa nama)',
-      price: pl ? pl.price : null,
-      available: pl ? pl.totalAvailable : 0,
-      allocatedOwn: pl ? pl.totalAllocated : 0,
+      desc: snDesc[code] || stockAvailDesc[code] || '(tanpa nama)',
+      price: null, // harga diambil dari Price List Reborn saat ditampilkan
+      available: 0, // stok sendiri diisi dari Stock Available (recomputeOthersWithStockAvail)
+      allocatedOwn: 0,
       others: mergeOthers(snOthers, stockAvailMap[code]),
       snOthers: snOthers,
       otherUnits: otherUnitsMap[code] || null,
       ownUnits: ownUnitsMap[code] || null,
-      inOwnList: !!pl,
-      fromStockAvail: !pl && !snOthers && !ownUnitsMap[code] && !snDesc[code] && !!stockAvailMap[code],
+      inOwnList: false,
+      fromStockAvail: !snOthers && !ownUnitsMap[code] && !snDesc[code] && !!stockAvailMap[code],
     });
   });
 

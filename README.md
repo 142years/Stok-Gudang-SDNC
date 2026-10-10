@@ -50,3 +50,15 @@ Tombol **💳 Leasing** di header (bisa dipakai frontliner dan staf). Cari produ
 - Yang **tidak** disimpan ke web (data internal): SRP, PRICE AFTER CB, FEE LEASING, SISA MARGIN.
 - Kolom yang disembunyikan di Excel dianggap program tidak aktif dan tidak tampil untuk frontliner (staf bisa menampilkannya lewat opsi di halaman produk; atau ubah `showHiddenPrograms` di config).
 - File: `js/leasing-config.js` (pengaturan), `js/leasing-core.js` (pembaca Excel & pencarian), `js/leasing-ui.js` (tampilan), `css/leasing.css`.
+
+## Sumber data (setelah file Price List dihapus)
+| Data | Sumber | Catatan |
+|---|---|---|
+| Stok sendiri (READY) & stok cabang lain (INDENT) | **Stock Available** | Gudang SDNC yang dihitung diatur di `js/stock-config.js` (default `SDNC.UTM` dan `SDNC.SHO`; **DEM** dan **RUS** tidak dihitung) |
+| Nomor seri / FIFO | **Serial Number** | |
+| Harga | **Price List Reborn** (kolom Retail) | Satu-satunya sumber harga |
+| Barcode | Data Barcode | |
+
+- Upload **Stock Available** saja sudah memperbarui stok semua barang (tidak perlu dipasangkan dengan file lain). Upload Serial Number hanya memperbarui nomor seri.
+- File **Price List** lama kalau diupload akan ditolak dengan pesan jelas.
+- Banner "Data belum diperbarui hari ini" sudah dihapus. Waktu pembaruan stok tetap tampil di bagian atas halaman.

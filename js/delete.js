@@ -7,8 +7,8 @@
 //     jadi tidak pernah muncul pesan "berhasil" padahal data masih ada di server.
 //  3) Tiap jenis data dihapus terpisah; yang gagal tidak membatalkan yang berhasil.
 const DELETE_SCOPES = {
-  stock: { label: 'Stok & Harga', keys: ['inventory:latest'] },
-  avail: { label: 'Stock Available', keys: ['stockavail:latest'] },
+  stock: { label: 'Katalog Serial Number', keys: ['inventory:latest'] },
+  avail: { label: 'Stock Available (stok sendiri & cabang)', keys: ['stockavail:latest'] },
   barcode: { label: 'Data Barcode', keys: ['barcode:latest'] },
   leasing: { label: 'Skema Leasing', keys: ['leasing:latest'] },
   reborn: { label: 'Price List Reborn', keys: ['rebornprice:latest', 'manualprice:latest'] }, // manualprice = data file lama, ikut dibersihkan
@@ -58,9 +58,7 @@ async function deleteCloudKey(key) {
 function applyLocalDelete(scope) {
   if (scope === 'stock') {
     catalog = null;
-    pendingPlRows = null;
     pendingSnRows = null;
-    pendingPlName = null;
     pendingSnName = null;
     openFifo.clear();
     openBranches.clear();
@@ -68,6 +66,7 @@ function applyLocalDelete(scope) {
   } else if (scope === 'avail') {
     stockAvailMap = {};
     stockAvailDesc = {};
+    stockAvailOwn = {};
     stockAvailMeta = null;
     recomputeOthersWithStockAvail();
   } else if (scope === 'barcode') {
