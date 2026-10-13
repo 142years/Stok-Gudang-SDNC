@@ -16,12 +16,13 @@ function normCode(s) {
     .trim();
 }
 
-// Return { price, source } -> source: 'pl' (harga bawaan katalog lama, bila ada) | 'reborn' | null
+// Return { price, source } -> source: 'reborn' | null (tidak ada harga di Reborn)
 function getEffectivePrice(it) {
-  if (it && Number(it.price) > 0) return { price: Number(it.price), source: 'pl' };
+  // Harga HANYA dari Price List Reborn (kolom Retail). Field `price` yang mungkin masih tersimpan di katalog lama
+  // (sisa file Price List yang sudah dihapus) SENGAJA diabaikan: itu harga basi yang tidak ikut diperbarui.
   const m = lookupRebornPrice(it);
   if (m) return { price: m, source: 'reborn' };
-  return { price: it && it.price !== undefined ? it.price : null, source: null };
+  return { price: null, source: null };
 }
 
 function lookupRebornPrice(it, store) {

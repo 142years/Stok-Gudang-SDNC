@@ -137,6 +137,7 @@ function recomputeOthersWithStockAvail() {
   catalog.items.forEach((it) => {
     existingCodes.add(it.code);
     delete it.__hay; // cache pencarian lama (pernah ikut tersimpan ke server) — kini dikelola search-core.js
+    it.price = null; // buang sisa harga Price List lama dari katalog tersimpan; harga hanya dari Reborn
     // snOthers null = memang tidak ada di SN (bukan 'tidak diketahui'); hanya katalog lama tanpa field ini yang pakai others
     const base = it.snOthers !== undefined ? it.snOthers : it.others || null;
     it.others = mergeOthers(base, stockAvailMap[it.code]);

@@ -235,7 +235,7 @@ function verifyHtml(sn) {
   const hit = catalog.serialIndex[sn];
   if (!hit) return '<span class="verify-bad">Serial number tidak ditemukan di data hari ini. Cek ulang input.</span>';
   const itemLine = `${escapeHtml(hit.desc)} <span style="color:var(--muted)">(${escapeHtml(hit.code)})</span>`;
-  const price = fmtRupiah(getEffectivePrice({ code: hit.code, desc: hit.desc, price: hit.price }).price);
+  const price = fmtRupiah(getEffectivePrice({ code: hit.code, desc: hit.desc }).price);
   return `${itemLine}<br/>Harga: <b style="color:var(--text);">${price}</b><br/>${fifoNoteHtml(hit)}`;
 }
 
