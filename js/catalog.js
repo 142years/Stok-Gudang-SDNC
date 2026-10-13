@@ -62,10 +62,39 @@ function renderEmpty() {
     renderScanResult();
     return;
   } else {
-    resultsEl.innerHTML = '<div class="empty">Scan barcode, atau ketik nama / kode barang untuk mulai mencari.</div>';
+    resultsEl.innerHTML =
+      '<div class="empty">Scan barcode, atau ketik nama / kode barang untuk mulai mencari.<br/>Atau pakai <b>Filter</b> untuk memilih jenis, brand, dan kisaran harga.</div>';
   }
   footNote.textContent = '';
 }
+
+// Peringatan yang TERLIHAT semua pengguna (panel status upload hanya terlihat staf):
+// data gagal dimuat dari server, atau data barcode belum ada (scan barcode tidak akan menemukan apa pun).
+function renderLoadWarning(errors) {
+  const el = document.getElementById('loadWarn');
+  if (!el) return;
+  const msgs = [];
+  if (errors && errors.length) {
+    const names = errors.map((e) => String(e).split(':')[0]);
+    msgs.push(`Sebagian data gagal dimuat dari server (${names.join(', ')}). Biasanya karena sinyal.`);
+  } else if (catalog && Object.keys(BARCODE_MAP).length === 0) {
+    msgs.push('Data barcode belum ada di perangkat ini, jadi pencarian lewat barcode belum bisa dipakai.');
+  }
+  if (!msgs.length) {
+    el.hidden = true;
+    el.innerHTML = '';
+    return;
+  }
+  el.hidden = false;
+  el.innerHTML = `${escapeHtml(msgs.join(' '))} <button type="button" id="reloadDataBtn">Muat ulang data</button>`;
+}
+document.addEventListener('click', function (e) {
+  if (e.target && e.target.id === 'reloadDataBtn') {
+    e.target.disabled = true;
+    e.target.textContent = 'Memuat…';
+    loadCatalog();
+  }
+});
 
 function buildCatalog(snRows, fileName) {
   const snMap = {};

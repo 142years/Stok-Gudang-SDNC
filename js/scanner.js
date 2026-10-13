@@ -18,9 +18,8 @@ const scanIdx = { bcRef: null, byBarcode: null, itemsRef: null, itemsLen: -1, by
 
 // Barcode angka dibandingkan tanpa nol di depan (UPC-A 12 digit vs EAN-13 sering terbaca beda)
 function normBarcode(s) {
-  const t = String(s || '')
-    .trim()
-    .replace(/\s+/g, '')
+  const t = cleanQuery(s)
+    .replace(/[\s-]+/g, '')
     .toUpperCase();
   if (!/^\d+$/.test(t)) return t;
   return t.replace(/^0+/, '') || t;
@@ -30,10 +29,12 @@ function scanIndex() {
   if (scanIdx.bcRef !== BARCODE_MAP) {
     const m = new Map();
     Object.keys(BARCODE_MAP).forEach((code) => {
-      const k = normBarcode(BARCODE_MAP[code]);
-      if (!k) return;
-      if (!m.has(k)) m.set(k, []);
-      m.get(k).push(code);
+      barcodeList(BARCODE_MAP[code]).forEach((b) => {
+        const k = normBarcode(b);
+        if (!k) return;
+        if (!m.has(k)) m.set(k, []);
+        if (!m.get(k).includes(code)) m.get(k).push(code);
+      });
     });
     scanIdx.byBarcode = m;
     scanIdx.bcRef = BARCODE_MAP;
@@ -49,7 +50,7 @@ function scanIndex() {
 }
 
 function resolveScan(raw) {
-  const q = String(raw).trim();
+  const q = cleanQuery(raw);
   if (!q || !catalog) return null;
   const idx = scanIndex();
   const sI = catalog.serialIndex || {};
@@ -66,7 +67,7 @@ function resolveScan(raw) {
 }
 
 function runScan(raw) {
-  const q = String(raw).trim();
+  const q = cleanQuery(raw);
   clearTimeout(searchTimer);
   searchInput.value = '';
   if (!q) return;
@@ -79,10 +80,8 @@ function runScan(raw) {
   if (r) {
     currentScan = { raw: q, codes: r.codes, serial: r.serial, fresh: true };
   } else {
-    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-    const found = catalog.items
-      .filter((it) => words.every((w) => getItemSearchHay(it).includes(w)))
-      .slice(0, RESULT_LIMIT);
+    const res = runSearch(q, defaultFilters()); // tanpa filter: scan harus menemukan barangnya
+    const found = res.exact.concat(res.list).slice(0, RESULT_LIMIT);
     currentScan = { raw: q, codes: found.map((it) => it.code), serial: null, fresh: true };
   }
   renderScanResult();
@@ -136,7 +135,8 @@ function scanBlocked() {
     deleteOverlay.classList.contains('show') ||
     soModalOverlay.classList.contains('show') ||
     (typeof notaIsOpen === 'function' && notaIsOpen()) ||
-    (typeof leasingIsOpen === 'function' && leasingIsOpen())
+    (typeof leasingIsOpen === 'function' && leasingIsOpen()) ||
+    (typeof camIsOpen === 'function' && camIsOpen())
   );
 }
 function isOtherField(el) {

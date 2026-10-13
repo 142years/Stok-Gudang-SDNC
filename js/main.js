@@ -102,6 +102,8 @@ const AUX_SYNC = [
       BARCODE_MAP = p.map || {};
       barcodeMeta = p.meta || null;
       getBarcodes._normIndex = null;
+      renderLoadWarning([]);
+      if (searchInput.value.trim()) doSearch();
     },
   },
   {

@@ -13,23 +13,41 @@ const openBranchUnits = new Set(); // key: `${code}::${whcode}` — untuk buka d
 // Dicocokkan berdasarkan KODE BARANG (Item No.) — sesuai struktur file
 // "Check ItemName & Barcode" (bukan berdasar deskripsi, yang terbukti ambigu:
 // satu deskripsi bisa dipakai lebih dari satu kode barang berbeda barcode).
+// Kode barang -> daftar barcode. Satu barang boleh punya BEBERAPA barcode. Data lama di server berupa teks
+// tunggal; keduanya dibaca lewat barcodeList().
 let BARCODE_MAP = {};
 let barcodeMeta = null; // { fileName, updatedAt }
+
+// Teks / daftar -> array barcode unik. Satu sel Excel bisa berisi beberapa barcode (dipisah spasi , ; |).
+function barcodeList(v) {
+  if (v === null || v === undefined) return [];
+  const arr = Array.isArray(v) ? v : String(v).split(/[\s,;|]+/);
+  const out = [];
+  arr.forEach((x) => {
+    const t = String(x).trim();
+    if (t && !out.includes(t)) out.push(t);
+  });
+  return out;
+}
 
 function getBarcodes(code) {
   if (!code) return null;
   const key = String(code).trim();
-  if (BARCODE_MAP[key]) return [BARCODE_MAP[key]];
-  // fallback: coba cocokkan tanpa mempedulikan huruf besar/kecil & spasi ganda
-  const norm = key.toUpperCase().replace(/\s+/g, ' ');
-  if (!getBarcodes._normIndex) {
-    getBarcodes._normIndex = {};
-    Object.keys(BARCODE_MAP).forEach((k) => {
-      getBarcodes._normIndex[k.toUpperCase().replace(/\s+/g, ' ')] = BARCODE_MAP[k];
-    });
+  let v = BARCODE_MAP[key];
+  if (v === undefined) {
+    // fallback: coba cocokkan tanpa mempedulikan huruf besar/kecil & spasi ganda
+    const norm = key.toUpperCase().replace(/\s+/g, ' ');
+    if (!getBarcodes._normIndex || getBarcodes._normFor !== BARCODE_MAP) {
+      getBarcodes._normIndex = {};
+      getBarcodes._normFor = BARCODE_MAP;
+      Object.keys(BARCODE_MAP).forEach((k) => {
+        getBarcodes._normIndex[k.toUpperCase().replace(/\s+/g, ' ')] = BARCODE_MAP[k];
+      });
+    }
+    v = getBarcodes._normIndex[norm];
   }
-  const hit = getBarcodes._normIndex[norm];
-  return hit ? [hit] : null;
+  const list = barcodeList(v);
+  return list.length ? list : null;
 }
 
 const resultsEl = document.getElementById('results');

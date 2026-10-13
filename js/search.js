@@ -111,6 +111,15 @@ function renderItem(it) {
 }
 
 resultsEl.addEventListener('click', function (e) {
+  if (e.target.closest('#moreBtn')) {
+    shownLimit += RESULT_LIMIT;
+    doSearch();
+    return;
+  }
+  if (e.target.closest('#resetFiltersBtn')) {
+    if (typeof filterReset === 'function') filterReset();
+    return;
+  }
   const branchUnitBtn = e.target.closest('.branch-unit-toggle');
   if (branchUnitBtn) {
     const code = branchUnitBtn.getAttribute('data-code');
@@ -148,51 +157,60 @@ searchInput.addEventListener('input', function () {
   }, 120);
 });
 
-function getItemSearchHay(it) {
-  if (it.__hay) return it.__hay;
-  let hay = (it.desc + ' ' + it.code).toLowerCase();
-  if (it.ownUnits && it.ownUnits.length) {
-    hay +=
-      ' ' +
-      it.ownUnits
-        .map((u) => u.serial)
-        .join(' ')
-        .toLowerCase();
+let shownLimit = RESULT_LIMIT;
+let _lastSearchKey = '';
+const SORT_LABELS = { relevan: 'paling cocok, ready dulu', 'harga-asc': 'harga termurah', 'harga-desc': 'harga termahal', stok: 'stok terbanyak' };
+
+function filterSummaryText(f) {
+  const bits = [];
+  if (f.jenis) bits.push(jenisLabel(f.jenis));
+  if (f.brand) bits.push(brandLabel(f.brand));
+  if (f.min !== null || f.max !== null) {
+    bits.push(f.min !== null && f.max !== null ? `Rp ${fmtJt(f.min)}–${fmtJt(f.max)}` : f.max !== null ? `maks Rp ${fmtJt(f.max)}` : `min Rp ${fmtJt(f.min)}`);
   }
-  const codes = getBarcodes(it.code);
-  if (codes && codes.length) {
-    hay += ' ' + codes.join(' ').toLowerCase();
-  }
-  it.__hay = hay;
-  return hay;
+  if (f.stock === 'ready') bits.push('Ready');
+  if (f.stock === 'ada') bits.push('Ready + Indent');
+  return bits.join(' · ');
 }
 
 function doSearch() {
-  const q = searchInput.value.trim().toLowerCase();
   if (!catalog) {
     renderEmpty();
     return;
   }
-  if (!q) {
+  const f = searchFilters;
+  const q = cleanQuery(searchInput.value);
+  if (!q && !filtersActive(f)) {
     renderEmpty();
+    if (typeof filterRefresh === 'function') filterRefresh();
     return;
   }
-  const words = q.split(/\s+/).filter(Boolean);
-  const matches = catalog.items.filter((it) => {
-    const hay = getItemSearchHay(it);
-    return words.every((w) => hay.includes(w));
-  });
-  if (matches.length === 0) {
-    resultsEl.innerHTML = '<div class="empty">Tidak ditemukan. Coba kata kunci lain.</div>';
+  const key = q.toLowerCase() + '|' + JSON.stringify(f);
+  if (key !== _lastSearchKey) {
+    _lastSearchKey = key;
+    shownLimit = RESULT_LIMIT; // pencarian/filter baru -> mulai dari halaman pertama
+  }
+  const res = runSearch(q, f);
+  const all = res.exact.concat(res.list);
+  if (typeof filterRefresh === 'function') filterRefresh();
+  if (all.length === 0) {
+    const extra = res.noPrice ? `<br/>${res.noPrice} barang cocok tapi belum punya harga.` : '';
+    resultsEl.innerHTML = `<div class="empty">Tidak ditemukan${filtersActive(f) ? ` dengan filter <b>${escapeHtml(filterSummaryText(f))}</b>` : ''}.${extra}<br/>${
+      filtersActive(f) ? '<button type="button" id="resetFiltersBtn" class="more-btn" style="margin-top:10px">Reset filter</button>' : 'Coba kata kunci lain.'
+    }</div>`;
     footNote.textContent = '';
     return;
   }
-  const shown = matches.slice(0, RESULT_LIMIT);
-  resultsEl.innerHTML = shown.map(renderItem).join('');
-  footNote.textContent =
-    matches.length > RESULT_LIMIT
-      ? `Menampilkan ${RESULT_LIMIT} dari ${matches.length} hasil — perjelas kata kunci untuk mempersempit.`
-      : `${matches.length} hasil ditemukan.`;
+  const shown = all.slice(0, shownLimit);
+  const left = all.length - shown.length;
+  resultsEl.innerHTML =
+    shown.map(renderItem).join('') +
+    (left > 0 ? `<button type="button" id="moreBtn" class="more-btn">Tampilkan ${Math.min(RESULT_LIMIT, left)} lagi (${left} tersisa)</button>` : '');
+  const parts = [`${all.length} hasil`];
+  if (filtersActive(f)) parts.push(`filter: ${filterSummaryText(f)}`);
+  parts.push(`urut: ${SORT_LABELS[f.sort] || SORT_LABELS.relevan}`);
+  if (res.noPrice) parts.push(`${res.noPrice} barang tanpa harga tidak ikut`);
+  footNote.textContent = parts.join(' · ');
 }
 
 let verifyTimer = null;

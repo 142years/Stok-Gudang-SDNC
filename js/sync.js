@@ -3,18 +3,24 @@
 // melempar error walau baris datanya belum ada ATAU (kalau ada bug data ganda) lebih dari satu,
 // supaya kegagalan satu key tidak ikut menggagalkan key lainnya.
 async function fetchLatestPayload(key) {
-  try {
-    const { data, error } = await sbClient.from('app_data').select('payload').eq('key', key).limit(1);
-    if (error) {
-      console.error(`Gagal memuat "${key}" dari server:`, error.message);
-      return { ok: false, payload: null, message: error.message };
+  // Jaringan HP sering putus-nyambung: coba sampai 3 kali sebelum dianggap gagal.
+  let last = { ok: false, payload: null, message: 'gagal' };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 500 * attempt));
+    try {
+      const { data, error } = await sbClient.from('app_data').select('payload').eq('key', key).limit(1);
+      if (error) {
+        last = { ok: false, payload: null, message: error.message };
+        continue;
+      }
+      const payload = data && data[0] ? data[0].payload : null;
+      return { ok: true, payload, message: '' };
+    } catch (e) {
+      last = { ok: false, payload: null, message: e.message || String(e) };
     }
-    const payload = data && data[0] ? data[0].payload : null;
-    return { ok: true, payload, message: '' };
-  } catch (e) {
-    console.error(`Error memuat "${key}":`, e);
-    return { ok: false, payload: null, message: e.message || String(e) };
   }
+  console.error(`Gagal memuat "${key}" dari server:`, last.message);
+  return last;
 }
 
 // Versi hemat untuk polling berkala: cek dulu penanda waktu (payload.updatedAt, beberapa byte saja).
@@ -130,6 +136,7 @@ async function loadCatalog() {
 
   recomputeOthersWithStockAvail();
   renderMeta();
+  renderLoadWarning(cloudErrors);
   refreshUploadBadges();
   renderEmpty();
   if (staffMode) renderSoModules();

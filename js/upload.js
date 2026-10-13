@@ -81,9 +81,12 @@ function parseBarcodeRows(rows) {
     const r = rows[i];
     if (!r || !r[3]) continue;
     const itemCode = String(r[3]).trim();
-    const barcode = r[5] ? String(r[5]).trim() : '';
-    if (!barcode) continue;
-    map[itemCode] = barcode;
+    const list = barcodeList(r[5]); // satu sel bisa berisi beberapa barcode
+    if (!list.length) continue;
+    if (!map[itemCode]) map[itemCode] = [];
+    list.forEach((b) => {
+      if (!map[itemCode].includes(b)) map[itemCode].push(b); // baris ganda untuk barang yang sama: semua barcode disimpan
+    });
   }
   return map;
 }
@@ -133,6 +136,7 @@ function recomputeOthersWithStockAvail() {
   const applyOwn = stockAvailOwn !== null; // null = data Stock Available lama (belum ada stok sendiri): jangan ubah
   catalog.items.forEach((it) => {
     existingCodes.add(it.code);
+    delete it.__hay; // cache pencarian lama (pernah ikut tersimpan ke server) — kini dikelola search-core.js
     // snOthers null = memang tidak ada di SN (bukan 'tidak diketahui'); hanya katalog lama tanpa field ini yang pakai others
     const base = it.snOthers !== undefined ? it.snOthers : it.others || null;
     it.others = mergeOthers(base, stockAvailMap[it.code]);
