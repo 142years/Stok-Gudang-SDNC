@@ -117,7 +117,7 @@ function renderItem(it) {
   // Keterangan untuk SEMUA barang (bukan hanya yang bernomor seri)
   let notesHtml = '';
   if (alloc > 0) {
-    notesHtml += `<div class="alloc-note">⚠ <b>${alloc} pcs berstatus Allocated</b>${free > 0 ? ` (bebas ${free} pcs)` : ' — tidak ada yang bebas'}. Fisik masih di gudang SDNC; minta cancel alokasi di SAP dulu sebelum dijual ke customer.</div>`;
+    notesHtml += `<div class="alloc-note">⚠ <b>${alloc} pcs Status Allocated</b>${free > 0 ? ` (bebas ${free} pcs)` : ' </div>`;
   }
   if (nr) {
     notesHtml +=
