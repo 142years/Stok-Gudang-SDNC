@@ -66,7 +66,7 @@ function renderBranchesToggle(it) {
           }
           return `<div class="branch-unit-wrap">
  <button class="branch-unit-toggle" data-code="${escapeHtml(it.code)}" data-wh="${escapeHtml(wh)}">
- <span>${escapeHtml(wh)}</span><span>${qty} pcs</span>
+ <span>${escapeHtml(wh)}${whTag(wh)}</span><span>${qty} pcs</span>
  </button>
  ${unitsHtml}
  </div>`;
@@ -77,20 +77,53 @@ function renderBranchesToggle(it) {
   return `<button class="branch-toggle" data-code="${escapeHtml(it.code)}">${label}</button>${listHtml}`;
 }
 
+function whTag(wh) {
+  const t = STOCK_WAREHOUSE_TAGS[String(wh).split('.').pop().toUpperCase()];
+  return t ? ` <span class="wh-tag">${escapeHtml(t)}</span>` : '';
+}
+// Stok di gudang SDNC yang bukan stok jual (demo/rusak): { total, text } atau null
+function ownNonReadyInfo(it) {
+  const o = it.ownNonReady;
+  if (!o) return null;
+  let total = 0;
+  const parts = [];
+  Object.keys(o).forEach((wh) => {
+    if (o[wh] > 0) {
+      total += o[wh];
+      parts.push(`${STOCK_NONREADY_LABELS[wh.toUpperCase()] || wh} ${o[wh]} pcs`);
+    }
+  });
+  return total > 0 ? { total, text: parts.join(' · ') } : null;
+}
+
 function renderItem(it) {
   const eff = getEffectivePrice(it);
   const priceStr = fmtRupiah(eff.price);
   const priceNote = eff.price > 0 ? '' : '<div style="font-size:11px; color:var(--muted); margin-top:2px;">Harga belum ada di Price List Reborn</div>';
+  const free = it.available || 0,
+    alloc = it.allocatedOwn || 0,
+    readyCount = free + alloc; // fisik di gudang SDNC (Allocated ikut dihitung: bisa di-cancel di SAP untuk dijual)
+  const nr = ownNonReadyInfo(it);
   let statusHtml;
-  let isIndent = false;
-  const readyCount = (it.available || 0) + (it.allocatedOwn || 0);
   if (readyCount > 0) {
     statusHtml = `<span class="badge ready">READY · ${readyCount} pcs</span>`;
   } else if (it.others) {
     statusHtml = `<span class="badge indent">INDENT</span>`;
-    isIndent = true;
+  } else if (nr) {
+    statusHtml = `<span class="badge demo">DI SDNC · ${escapeHtml(nr.text)}</span>`;
   } else {
     statusHtml = `<span class="badge out">HABIS · tidak ada di cabang lain</span>`;
+  }
+  // Keterangan untuk SEMUA barang (bukan hanya yang bernomor seri)
+  let notesHtml = '';
+  if (alloc > 0) {
+    notesHtml += `<div class="alloc-note">⚠ <b>${alloc} pcs berstatus Allocated</b>${free > 0 ? ` (bebas ${free} pcs)` : ' — tidak ada yang bebas'}. Fisik masih di gudang SDNC; minta cancel alokasi di SAP dulu sebelum dijual ke customer.</div>`;
+  }
+  if (nr) {
+    notesHtml +=
+      readyCount > 0 || it.others
+        ? `<div class="alloc-note muted">Ada juga di SDNC (bukan stok jual): ${escapeHtml(nr.text)}.</div>`
+        : `<div class="alloc-note">Ada di gudang SDNC sebagai unit ${escapeHtml(nr.text)} — bukan stok jual.</div>`;
   }
   let barcodeHtml = '';
   if (staffMode) {
@@ -105,7 +138,8 @@ function renderItem(it) {
  ${barcodeHtml}
  <div class="card-row"><span class="price">${priceStr}</span>${statusHtml}</div>
  ${priceNote}
- ${isIndent ? renderBranchesToggle(it) : ''}
+ ${notesHtml}
+ ${it.others ? renderBranchesToggle(it) : ''}
  ${renderFifoList(it)}
  </div>`;
 }
@@ -220,6 +254,10 @@ verifyInput.addEventListener('input', function () {
 });
 
 function fifoNoteHtml(hit) {
+  if (hit.nonReady) {
+    const lbl = STOCK_NONREADY_LABELS[String(hit.whcode).toUpperCase()] || hit.whcode;
+    return `<span class="verify-warn">⚠ Unit ${escapeHtml(lbl)} di ${escapeHtml(hit.whcode)} — bukan stok jual, jangan dijual sebagai barang baru.</span>`;
+  }
   const allocWarn =
     hit.status === 'Allocated'
       ? '<br/><span class="verify-warn">⚠ Status: Allocated — minta cancel alokasi di sistem SAP dulu sebelum dijual ke customer.</span>'

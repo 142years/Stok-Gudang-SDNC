@@ -365,6 +365,33 @@ header h1 {
   color: var(--indent);
   background: var(--indent-bg);
 }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.badge.demo {
+  color: var(--muted);
+  background: var(--panel-3, var(--panel-2));
+  border: 1px solid var(--line);
+}
+.alloc-note {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--indent);
+  background: var(--indent-bg);
+  border-radius: 6px;
+  padding: 6px 9px;
+  margin-top: 6px;
+}
+.alloc-note.muted { color: var(--muted); background: var(--panel-2); }
+.wh-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
 .badge.out {
   color: var(--out);
   background: var(--out-bg);

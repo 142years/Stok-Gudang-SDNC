@@ -71,3 +71,16 @@ Tombol **💳 Leasing** di header (bisa dipakai frontliner dan staf). Cari produ
 - Jenis & brand dibaca dari kode barang `KATEGORI.BRAND.JENISnomor` (mis. `GAD.SAM.HP01453`). Nama brand, jenis, dan pilihan harga diatur di `js/filter-config.js`.
 - Kalau data gagal dimuat dari server (mis. sinyal HP lemah), muncul peringatan yang terlihat semua pengguna beserta tombol “Muat ulang data”; pemuatan juga dicoba ulang otomatis sampai 3 kali.
 - File: `js/search-core.js` (logika), `js/filter-ui.js` (tampilan filter), `js/camera-scan.js`, `css/filter.css`.
+
+## Arti status stok di kartu barang
+| Tampilan | Arti |
+|---|---|
+| **READY · N pcs** | Fisik ada di gudang SDNC (UTM + SHO). N = Available + Allocated |
+| ⚠ **N pcs berstatus Allocated** | Sudah dialokasikan di SAP. Fisik masih ada; minta cancel alokasi di SAP sebelum dijual. Muncul untuk **semua** barang (bernomor seri maupun tidak), lengkap dengan jumlah yang bebas |
+| **INDENT** | Tidak ada di SDNC, tetapi ada di cabang lain |
+| **DI SDNC · DEMO / RUSAK** | Ada di gudang SDNC.DEM / SDNC.RUS: unit demo/rusak, **bukan stok jual** (tidak dikira INDENT/HABIS) |
+| **HABIS** | Tidak ada di SDNC maupun cabang lain |
+
+- Tombol **Lihat stok cabang lain** muncul di semua barang yang ada di cabang lain, termasuk yang READY di SDNC. Gudang berakhiran DEM/RUS diberi penanda “demo/rusak”.
+- Unit SN di gudang demo/rusak **tidak masuk urutan FIFO**; kalau di-scan, muncul peringatan “bukan stok jual”.
+- Gudang mana yang dihitung stok jual, label demo/rusak, dan penanda gudang diatur di `js/stock-config.js`.

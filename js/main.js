@@ -23,6 +23,7 @@ setInterval(async function () {
       markSynced('inventory:latest');
       if (!catalog || inv.payload.updatedAt !== catalog.updatedAt) {
         catalog = inv.payload;
+        recomputeOthersWithStockAvail(); // stok sendiri & cabang lain selalu dihitung dari Stock Available terbaru
         renderMeta();
         refreshUploadBadges();
         if (searchInput.value.trim()) doSearch();
@@ -90,6 +91,7 @@ const AUX_SYNC = [
     apply: (p) => {
       stockAvailMap = p.map || {};
       stockAvailOwn = p.own || null;
+      stockAvailOwnX = p.ownx || {};
       stockAvailDesc = p.descMap || {};
       stockAvailMeta = p.meta || null;
       recomputeOthersWithStockAvail();

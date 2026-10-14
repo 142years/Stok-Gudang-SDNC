@@ -98,6 +98,7 @@ async function loadCatalog() {
   );
   stockAvailMap = (sa && sa.map) || {};
   stockAvailOwn = sa && sa.own ? sa.own : null; // null = data lama tanpa stok sendiri
+  stockAvailOwnX = sa ? sa.ownx || {} : null;
   stockAvailDesc = (sa && sa.descMap) || {};
   stockAvailMeta = (sa && sa.meta) || null;
 

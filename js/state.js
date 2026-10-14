@@ -81,6 +81,8 @@ let pendingSnRows = null,
 // tetap bisa kedeteksi statusnya INDENT kalau memang ada stok di cabang lain.
 // Stok gudang sendiri dari Stock Available: { kode: {a: available, l: allocated} }. null = data lama tanpa field ini.
 let stockAvailOwn = null;
+// Stok SDNC yang bukan stok jual (demo/rusak): { kode: { 'SDNC.DEM': jumlah } }. null = data lama.
+let stockAvailOwnX = null;
 let stockAvailMap = {}; // { itemCode: { whcode: qty } } — sudah dikecualikan whcode SDNC*
 let stockAvailDesc = {}; // { itemCode: desc }
 let stockAvailMeta = null; // { fileName, updatedAt }

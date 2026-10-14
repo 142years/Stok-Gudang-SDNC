@@ -100,6 +100,7 @@ function buildCatalog(snRows, fileName) {
   const snMap = {};
   const snDesc = {};
   const ownUnitsMap = {};
+  const nonReadyUnitsMap = {}; // unit di gudang SDNC non-jual (demo/rusak): tidak masuk FIFO
   const otherUnitsMap = {}; // { itemCode: { whcode: [ {serial, admissionDate, ts} ] } } — SN milik cabang lain
   for (let i = 1; i < snRows.length; i++) {
     const r = snRows[i];
@@ -116,8 +117,10 @@ function buildCatalog(snRows, fileName) {
       if (whcode.startsWith('SDN')) {
         // Gudang sendiri: Allocated tetap ditampilkan (fisik masih bisa ada, alokasi bisa di-cancel untuk dijual)
         if (serial && admDate) {
-          if (!ownUnitsMap[itemCode]) ownUnitsMap[itemCode] = [];
-          ownUnitsMap[itemCode].push({ serial, whcode, admissionDate: admDate.display, ts: admDate.ts, status });
+          const unit = { serial, whcode, admissionDate: admDate.display, ts: admDate.ts, status };
+          const target = STOCK_OWN_WAREHOUSES.includes(whcode.toUpperCase()) ? ownUnitsMap : nonReadyUnitsMap;
+          if (!target[itemCode]) target[itemCode] = [];
+          target[itemCode].push(unit);
         }
       } else if (status === 'Available' || status === 'Allocated') {
         // Cabang lain: Available maupun Allocated dihitung ke total (fisik kemungkinan masih ada di
@@ -162,10 +165,30 @@ function buildCatalog(snRows, fileName) {
     });
   });
 
+  // Unit demo/rusak tetap bisa di-scan, dengan penanda nonReady (bukan bagian urutan FIFO)
+  Object.keys(nonReadyUnitsMap).forEach((code) => {
+    nonReadyUnitsMap[code].forEach((u) => {
+      if (serialIndex[u.serial]) return;
+      serialIndex[u.serial] = {
+        code,
+        desc: snDesc[code] || stockAvailDesc[code] || '',
+        price: null,
+        admissionDate: u.admissionDate,
+        whcode: u.whcode,
+        status: u.status,
+        nonReady: true,
+        rank: null,
+        oldestSerial: '',
+        oldestDate: '',
+      };
+    });
+  });
+
   const allCodes = new Set([
     ...Object.keys(snMap),
     ...Object.keys(snDesc),
     ...Object.keys(ownUnitsMap),
+    ...Object.keys(nonReadyUnitsMap),
     ...Object.keys(stockAvailMap),
   ]);
   const items = [];

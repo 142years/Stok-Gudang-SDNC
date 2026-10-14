@@ -67,6 +67,7 @@ function applyLocalDelete(scope) {
     stockAvailMap = {};
     stockAvailDesc = {};
     stockAvailOwn = {};
+    stockAvailOwnX = {};
     stockAvailMeta = null;
     recomputeOthersWithStockAvail();
   } else if (scope === 'barcode') {

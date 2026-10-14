@@ -60,10 +60,12 @@ function itemPrice(it) {
   const p = getEffectivePrice(it).price;
   return p > 0 ? Number(p) : null;
 }
-// 0 = READY, 1 = INDENT (ada di cabang lain), 2 = HABIS
+// 0 = READY, 1 = INDENT (ada di cabang lain), 2 = hanya unit demo/rusak di SDNC, 3 = HABIS
 function stockGroup(it) {
   if ((it.available || 0) + (it.allocatedOwn || 0) > 0) return 0;
-  return it.others ? 1 : 2;
+  if (it.others) return 1;
+  if (it.ownNonReady && Object.values(it.ownNonReady).some((q) => q > 0)) return 2;
+  return 3;
 }
 function fmtJt(n) {
   if (n >= 1000000) return String(Math.round((n / 1000000) * 10) / 10).replace('.', ',') + ' jt';

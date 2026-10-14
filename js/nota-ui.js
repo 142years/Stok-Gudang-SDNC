@@ -47,9 +47,12 @@
     if (!it.code) return { cls: 'neutral', text: 'Barang manual' };
     const ci = catItem(it.code);
     if (!ci) return { cls: 'neutral', text: 'Tidak ada di katalog saat ini' };
-    const av = Number(ci.available) || 0;
-    if (av >= it.qty && av > 0) return { cls: 'ready', text: `Ready · stok ${av}` };
-    if (av > 0) return { cls: 'indent', text: `Stok kurang · hanya ${av}` };
+    const free = Number(ci.available) || 0,
+      al = Number(ci.allocatedOwn) || 0,
+      av = free + al;
+    const alNote = al > 0 ? ` (${al} Allocated)` : '';
+    if (av >= it.qty && av > 0) return { cls: 'ready', text: `Ready · stok ${av}${alNote}` };
+    if (av > 0) return { cls: 'indent', text: `Stok kurang · hanya ${av}${alNote}` };
     const oth = ci.others ? Object.keys(ci.others).length : 0;
     if (oth) return { cls: 'indent', text: `INDENT · ada di ${oth} cabang lain` };
     return { cls: 'out', text: 'Stok kosong' };

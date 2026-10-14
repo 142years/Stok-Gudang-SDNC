@@ -40,6 +40,7 @@ function parseStockAvailRows(rows) {
   const map = {};
   const descMap = {};
   const own = {};
+  const ownx = {}; // stok SDNC non-jual (demo/rusak), hanya untuk keterangan
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     if (!r || !r[2]) continue;
@@ -61,13 +62,20 @@ function parseStockAvailRows(rows) {
           own[itemCode].l += l;
         }
       }
-      continue; // SDNC.DEM / SDNC.RUS dst: tidak dihitung
+      else {
+        const q = Math.max(0, Number(r[5]) || available + allocated); // In Stock
+        if (q > 0) {
+          if (!ownx[itemCode]) ownx[itemCode] = {};
+          ownx[itemCode][whcode] = (ownx[itemCode][whcode] || 0) + q;
+        }
+      }
+      continue; // SDNC.DEM / SDNC.RUS dst: tidak dihitung sebagai stok jual
     }
     if (available <= 0) continue;
     if (!map[itemCode]) map[itemCode] = {};
     map[itemCode][whcode] = (map[itemCode][whcode] || 0) + available;
   }
-  return { map, descMap, own };
+  return { map, descMap, own, ownx };
 }
 
 function validateBarcodeRows(rows) {
@@ -134,6 +142,7 @@ function recomputeOthersWithStockAvail() {
   if (!catalog || !catalog.items) return;
   const existingCodes = new Set();
   const applyOwn = stockAvailOwn !== null; // null = data Stock Available lama (belum ada stok sendiri): jangan ubah
+  const applyOwnX = stockAvailOwnX !== null;
   catalog.items.forEach((it) => {
     existingCodes.add(it.code);
     delete it.__hay; // cache pencarian lama (pernah ikut tersimpan ke server) — kini dikelola search-core.js
@@ -147,10 +156,12 @@ function recomputeOthersWithStockAvail() {
       it.allocatedOwn = o ? o.l : 0;
       it.inOwnList = !!o;
     }
+    if (applyOwnX) it.ownNonReady = stockAvailOwnX[it.code] || null;
   });
   // Barang yang ada di Stock Available (stok sendiri atau cabang lain) tapi belum ada di katalog
   const extraCodes = new Set(Object.keys(stockAvailMap));
   if (applyOwn) Object.keys(stockAvailOwn).forEach((c) => extraCodes.add(c));
+  if (applyOwnX) Object.keys(stockAvailOwnX).forEach((c) => extraCodes.add(c));
   extraCodes.forEach((code) => {
     if (existingCodes.has(code)) return;
     const o = applyOwn ? stockAvailOwn[code] : null;
@@ -165,11 +176,12 @@ function recomputeOthersWithStockAvail() {
       otherUnits: null,
       ownUnits: null,
       inOwnList: !!o,
+      ownNonReady: applyOwnX ? stockAvailOwnX[code] || null : null,
       fromStockAvail: true,
     });
   });
   // Buang barang yang HANYA muncul karena Stock Available, kalau datanya sudah tidak ada
-  catalog.items = catalog.items.filter((it) => !(it.fromStockAvail && !it.others && !(it.available > 0 || it.allocatedOwn > 0)));
+  catalog.items = catalog.items.filter((it) => !(it.fromStockAvail && !it.others && !(it.available > 0 || it.allocatedOwn > 0) && !it.ownNonReady));
   if (searchInput.value.trim()) doSearch();
   else renderEmpty();
 }
@@ -329,16 +341,18 @@ async function detectAndProcessFile(file) {
     return { type: 'sn', ok: true };
   }
   if (validateStockAvailRows(rows)) {
-    const { map, descMap, own } = parseStockAvailRows(rows);
+    const { map, descMap, own, ownx } = parseStockAvailRows(rows);
     stockAvailMap = map;
     stockAvailDesc = descMap;
     stockAvailOwn = own;
+    stockAvailOwnX = ownx;
     stockAvailMeta = { fileName: file.name, updatedAt: new Date().toISOString() };
     setCheckBadge(stockAvailCheckBadge, 'loading', 'Menyimpan ke server...');
     const result = await saveCatalogToCloud('stockavail:latest', {
       map: stockAvailMap,
       descMap: stockAvailDesc,
       own: stockAvailOwn,
+      ownx: stockAvailOwnX,
       meta: stockAvailMeta,
     });
     if (result.ok) {
