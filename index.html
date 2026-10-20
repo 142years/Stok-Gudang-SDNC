@@ -19,8 +19,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="css/theme.css?v=1" />
 <link rel="stylesheet" href="css/style.css?v=4" />
-<link rel="stylesheet" href="css/nota.css?v=1" />
-<link rel="stylesheet" href="css/leasing.css?v=1" />
+<link rel="stylesheet" href="css/leasing.css?v=2" />
 <link rel="stylesheet" href="css/filter.css?v=2" />
 </head>
 <body>
@@ -38,7 +37,6 @@
  <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
  </button>
  <button id="leasingOpenBtn" type="button">💳 Leasing</button>
- <button id="notaOpenBtn" type="button">📝 Nota</button>
  <button id="staffToggle" type="button">Staff Gudang</button>
  </div>
  </header>
@@ -198,19 +196,8 @@
 <!-- Skema Leasing -->
 <div id="leasingOverlay" role="dialog" aria-modal="true" aria-label="Skema Leasing">
  <div id="leasingBox">
-  <div id="leasingHead"><div class="nota-title">Skema Leasing</div><button id="leasingCloseBtn" type="button" aria-label="Tutup">&times;</button></div>
+  <div id="leasingHead"><div class="ls-title">Skema Leasing</div><button id="leasingCloseBtn" type="button" aria-label="Tutup">&times;</button></div>
   <div id="leasingBody"></div>
- </div>
-</div>
-
-<!-- Nota Digital -->
-<div id="notaOverlay" role="dialog" aria-modal="true" aria-label="Nota Digital">
- <div id="notaBox">
-  <div id="notaHead"><div class="nota-title">Nota Digital</div><button id="notaCloseBtn" type="button" aria-label="Tutup">&times;</button></div>
-  <div id="notaTabs"></div>
-  <div id="notaBody"></div>
-  <div id="notaFoot" hidden></div>
-  <div id="notaToast" role="status"></div>
  </div>
 </div>
 
@@ -226,19 +213,16 @@
 <script src="js/leasing-core.js?v=1"></script>
 <script src="js/pricing.js?v=3"></script>
 <script src="js/helpers.js?v=1"></script>
-<script src="js/auth.js?v=2"></script>
+<script src="js/auth.js?v=3"></script>
 <script src="js/sync.js?v=7"></script>
 <script src="js/catalog.js?v=6"></script>
 <script src="js/stock-opname.js?v=2"></script>
 <script src="js/upload.js?v=8"></script>
 <script src="js/delete.js?v=5"></script>
 <script src="js/search.js?v=6"></script>
-<script src="js/scanner.js?v=5"></script>
+<script src="js/scanner.js?v=6"></script>
 <script src="js/filter-ui.js?v=1"></script>
 <script src="js/leasing-ui.js?v=1"></script>
-<script src="js/nota-config.js?v=1"></script>
-<script src="js/nota-core.js?v=2"></script>
-<script src="js/nota-ui.js?v=4"></script>
 <script src="js/main.js?v=7"></script>
 </body>
 </html>

@@ -24,7 +24,6 @@ function enterStaffMode() {
   closePinModal();
   doSearch();
   renderSoModules();
-  if (typeof notaOnModeChange === 'function') notaOnModeChange();
   if (typeof leasingRefresh === 'function') leasingRefresh();
 }
 function checkPin() {
@@ -52,7 +51,6 @@ staffToggle.addEventListener('click', function () {
     staffToggle.classList.remove('active');
     staffToggle.textContent = 'Staff Gudang';
     doSearch();
-    if (typeof notaOnModeChange === 'function') notaOnModeChange();
   if (typeof leasingRefresh === 'function') leasingRefresh();
     return;
   }
