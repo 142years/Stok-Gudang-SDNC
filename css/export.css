@@ -1,0 +1,30 @@
+/* Ekspor hasil pencarian: tombol, panel, dan tata letak cetak */
+#exportBar { display: flex; justify-content: flex-end; padding: 8px 16px 0; }
+#exportBar[hidden], #exportPanel[hidden] { display: none; }
+.ex-open { font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
+.ex-open[aria-expanded='true'] { color: var(--staff); border-color: var(--staff); background: var(--staff-bg); }
+#exportPanel { margin: 8px 16px 0; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.ex-info { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.ex-opt { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); margin-bottom: 8px; cursor: pointer; }
+.ex-opt input { width: 16px; height: 16px; }
+.ex-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.ex-go { flex: 1 1 140px; font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 12px; border-radius: 10px; border: 1px solid var(--staff); background: var(--staff-bg); color: var(--staff); cursor: pointer; }
+.ex-go:active { opacity: .8; }
+#printArea { display: none; }
+@media (max-width: 640px) { #exportBar { padding: 8px 12px 0; } #exportPanel { margin: 8px 12px 0; } }
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  html.printing, html.printing body { background: #fff !important; color: #000 !important; overflow: visible !important; height: auto !important; }
+  html.printing body > *:not(#printArea) { display: none !important; }
+  html.printing #printArea { display: block; font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #000; }
+  #printArea .pa-org { font-size: 9.5pt; color: #444; }
+  #printArea h1 { font-size: 16pt; margin: 2px 0 6px; }
+  #printArea .pa-meta { font-size: 9pt; color: #333; line-height: 1.5; margin-bottom: 10px; }
+  #printArea table { width: 100%; border-collapse: collapse; }
+  #printArea thead { display: table-header-group; }
+  #printArea tr { break-inside: avoid; page-break-inside: avoid; }
+  #printArea th, #printArea td { border: 1px solid #555; padding: 4px 6px; text-align: left; vertical-align: top; }
+  #printArea th { background: #e8e8e8; font-weight: 700; }
+  #printArea td.c { text-align: center; }
+  #printArea td.r { text-align: right; white-space: nowrap; }
+}

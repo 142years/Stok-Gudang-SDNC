@@ -62,6 +62,7 @@ Tombol **💳 Leasing** di header (bisa dipakai frontliner dan staf). Cari produ
 - Jenis & brand dibaca dari kode barang `KATEGORI.BRAND.JENISnomor` (mis. `GAD.SAM.HP01453`). Nama brand, jenis, dan pilihan harga diatur di `js/filter-config.js`.
 - Kalau data gagal dimuat dari server (mis. sinyal HP lemah), muncul peringatan yang terlihat semua pengguna beserta tombol “Muat ulang data”; pemuatan juga dicoba ulang otomatis sampai 3 kali.
 - File: `js/search-core.js` (logika), `js/filter-ui.js` (tampilan filter), `css/filter.css`.
+- **Ekspor / Cetak**: tombol **⬇ Ekspor / Cetak** muncul di atas hasil pencarian atau filter. Pilihan: **Cetak / Simpan PDF** (A4, header tabel berulang tiap halaman) dan **Unduh Excel (.xlsx)**. Isi mengikuti kata kunci, filter, dan urutan yang sedang aktif, dan mencakup **semua** hasil (bukan hanya 60 yang tampil). Kolom: No, Kode, Nama Barang, Brand, Harga, Stok (bisa disembunyikan). Barang tanpa harga bisa disembunyikan. Di atas 500 barang ada konfirmasi. Nama di kop diatur di `js/export.js` (`EXPORT_HEADER_NAME`). File: `js/export.js`, `css/export.css`.
 
 ## Arti status stok di kartu barang
 | Tampilan | Arti |
