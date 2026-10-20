@@ -20,3 +20,4 @@
 .load-warn { margin: 8px 16px 0; padding: 9px 12px; border-radius: 9px; border: 1px solid var(--indent); background: var(--indent-bg); color: var(--indent); font-size: 12.5px; }
 .load-warn button { margin-left: 6px; font-family: inherit; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--indent); background: transparent; color: var(--indent); cursor: pointer; }
 @media (max-width: 640px) { .fb-panel { padding: 10px 12px 12px; } .load-warn { margin: 8px 12px 0; } }
+.fb-title small { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted); }

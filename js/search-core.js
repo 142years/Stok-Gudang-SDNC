@@ -74,12 +74,12 @@ function fmtJt(n) {
 
 // ---------- filter ----------
 function defaultFilters() {
-  return { jenis: '', brand: '', min: null, max: null, stock: 'all', sort: 'relevan' };
+  return { jenis: [], brand: [], min: null, max: null, stock: 'all', sort: 'relevan' }; // jenis & brand: daftar pilihan (kosong = semua)
 }
 const searchFilters = defaultFilters();
 function filtersActive(f) {
   f = f || searchFilters;
-  return !!(f.jenis || f.brand || f.min !== null || f.max !== null || f.stock !== 'all');
+  return !!(f.jenis.length || f.brand.length || f.min !== null || f.max !== null || f.stock !== 'all');
 }
 function priceFilterActive(f) {
   f = f || searchFilters;
@@ -88,8 +88,8 @@ function priceFilterActive(f) {
 // skip = dimensi yang diabaikan ('jenis' | 'brand' | 'harga' | 'stok'), dipakai untuk menghitung jumlah per pilihan
 function matchFilters(it, f, skip) {
   const m = itemMeta(it);
-  if (skip !== 'jenis' && f.jenis && m.jenis !== f.jenis) return false;
-  if (skip !== 'brand' && f.brand && (m.brand || '?') !== f.brand) return false;
+  if (skip !== 'jenis' && f.jenis.length && !f.jenis.includes(m.jenis)) return false;
+  if (skip !== 'brand' && f.brand.length && !f.brand.includes(m.brand || '?')) return false;
   if (skip !== 'stok' && f.stock !== 'all') {
     const g = stockGroup(it);
     if (f.stock === 'ready' && g !== 0) return false;

@@ -197,8 +197,8 @@ const SORT_LABELS = { relevan: 'paling cocok, ready dulu', 'harga-asc': 'harga t
 
 function filterSummaryText(f) {
   const bits = [];
-  if (f.jenis) bits.push(jenisLabel(f.jenis));
-  if (f.brand) bits.push(brandLabel(f.brand));
+  if (f.jenis.length) bits.push(f.jenis.map(jenisLabel).join(' + '));
+  if (f.brand.length) bits.push(f.brand.map(brandLabel).join(' + '));
   if (f.min !== null || f.max !== null) {
     bits.push(f.min !== null && f.max !== null ? `Rp ${fmtJt(f.min)}–${fmtJt(f.max)}` : f.max !== null ? `maks Rp ${fmtJt(f.max)}` : `min Rp ${fmtJt(f.min)}`);
   }

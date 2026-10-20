@@ -6,6 +6,11 @@
   const F = searchFilters;
   const U = { open: false };
   const esc = escapeHtml;
+  // ketuk pilihan = tambah/lepas dari daftar; nilai kosong ('Semua') = kosongkan daftar
+  function toggleIn(arr, v) {
+    if (!v) return [];
+    return arr.includes(v) ? arr.filter((x) => x !== v) : arr.concat([v]);
+  }
 
   const SORTS = [
     ['relevan', 'Paling cocok'],
@@ -14,7 +19,7 @@
     ['stok', 'Stok terbanyak'],
   ];
   function activeCount() {
-    return [F.jenis, F.brand, priceFilterActive(F), F.stock !== 'all'].filter(Boolean).length;
+    return [F.jenis.length > 0, F.brand.length > 0, priceFilterActive(F), F.stock !== 'all'].filter(Boolean).length;
   }
   function priceChipText() {
     if (F.min !== null && F.max !== null) return `Rp ${fmtJt(F.min)}–${fmtJt(F.max)}`;
@@ -26,14 +31,14 @@
   function renderBar() {
     const n = activeCount();
     const chips = [];
-    if (F.jenis) chips.push(['jenis', jenisLabel(F.jenis)]);
-    if (F.brand) chips.push(['brand', brandLabel(F.brand)]);
+    F.jenis.forEach((j) => chips.push(['jenis', jenisLabel(j), j]));
+    F.brand.forEach((b) => chips.push(['brand', brandLabel(b), b]));
     if (priceFilterActive(F)) chips.push(['harga', priceChipText()]);
     if (F.stock !== 'all') chips.push(['stok', F.stock === 'ready' ? 'Ready' : 'Ready + Indent']);
     bar.innerHTML =
       `<button type="button" class="fb-btn${U.open ? ' on' : ''}" data-fa="toggle" aria-expanded="${U.open}">⚙ Filter${n ? ` <span class="fb-count">${n}</span>` : ''}</button>` +
       `<select id="fbSort" aria-label="Urutkan hasil">${SORTS.map(([v, l]) => `<option value="${v}"${F.sort === v ? ' selected' : ''}>${l}</option>`).join('')}</select>` +
-      chips.map(([k, t]) => `<button type="button" class="fb-chip on" data-fa="clear" data-k="${k}" title="Hapus filter">${esc(t)} ✕</button>`).join('');
+      chips.map(([k, t, v = '']) => `<button type="button" class="fb-chip on" data-fa="clear" data-k="${k}" data-v="${esc(v)}" title="Hapus filter">${esc(t)} ✕</button>`).join('');
   }
 
   // ---------- panel pilihan ----------
@@ -53,21 +58,23 @@
     const fc = facetCounts(searchInput.value, F);
     const types = FILTER_TYPES.concat([{ id: 'lainnya', label: 'Lainnya' }]);
     const jenisHtml =
-      chip('Semua', 'data-fa="jenis" data-v=""', !F.jenis) +
+      chip('Semua', 'data-fa="jenis" data-v=""', !F.jenis.length) +
       types
-        .filter((t) => (fc.jenis.get(t.id) || 0) > 0 || F.jenis === t.id)
-        .map((t) => chip(t.label, `data-fa="jenis" data-v="${t.id}"`, F.jenis === t.id, fc.jenis.get(t.id) || 0))
+        .filter((t) => (fc.jenis.get(t.id) || 0) > 0 || F.jenis.includes(t.id))
+        .map((t) => chip(t.label, `data-fa="jenis" data-v="${t.id}"`, F.jenis.includes(t.id), fc.jenis.get(t.id) || 0))
         .join('');
     const brands = Array.from(fc.brand.entries()).sort((a, b) => b[1] - a[1] || brandLabel(a[0]).localeCompare(brandLabel(b[0])));
     let top = brands.slice(0, FILTER_BRAND_CHIPS);
     const rest = brands.slice(FILTER_BRAND_CHIPS);
-    if (F.brand && !top.some((b) => b[0] === F.brand)) top = top.concat([[F.brand, fc.brand.get(F.brand) || 0]]);
+    F.brand.forEach((sel) => {
+      if (!top.some((b) => b[0] === sel)) top = top.concat([[sel, fc.brand.get(sel) || 0]]);
+    });
     const brandHtml =
-      chip('Semua', 'data-fa="brand" data-v=""', !F.brand) +
-      top.map(([b, c]) => chip(brandLabel(b), `data-fa="brand" data-v="${esc(b)}"`, F.brand === b, c)).join('') +
+      chip('Semua', 'data-fa="brand" data-v=""', !F.brand.length) +
+      top.map(([b, c]) => chip(brandLabel(b), `data-fa="brand" data-v="${esc(b)}"`, F.brand.includes(b), c)).join('') +
       (rest.length
         ? `<select id="fbBrandMore" aria-label="Brand lain"><option value="">Brand lain…</option>${rest
-            .filter((b) => b[0] !== F.brand)
+            .filter((b) => !F.brand.includes(b[0]))
             .sort((a, b) => brandLabel(a[0]).localeCompare(brandLabel(b[0])))
             .map(([b, c]) => `<option value="${esc(b)}">${esc(brandLabel(b))} (${c})</option>`)
             .join('')}</select>`
@@ -77,8 +84,8 @@
       FILTER_PRICE_MIN_ONLY.map((v) => chip(`> ${fmtJt(v)}`, `data-fa="price" data-min="${v}" data-max=""`, F.min === v && F.max === null)).join('');
     const bandsHtml = FILTER_PRICE_BANDS.map(([a, b]) => chip(`${fmtJt(a).replace(' jt', '')}–${fmtJt(b)}`, `data-fa="price" data-min="${a}" data-max="${b}"`, F.min === a && F.max === b)).join('');
     panel.innerHTML = `
-      <div class="fb-group"><div class="fb-title">Jenis</div><div class="fb-chips">${jenisHtml}</div></div>
-      <div class="fb-group"><div class="fb-title">Brand</div><div class="fb-chips">${brandHtml}</div></div>
+      <div class="fb-group"><div class="fb-title">Jenis <small>· bisa pilih lebih dari satu</small></div><div class="fb-chips">${jenisHtml}</div></div>
+      <div class="fb-group"><div class="fb-title">Brand <small>· bisa pilih lebih dari satu</small></div><div class="fb-chips">${brandHtml}</div></div>
       <div class="fb-group"><div class="fb-title">Harga maksimal</div><div class="fb-chips">${chip('Semua harga', 'data-fa="price" data-min="" data-max=""', !priceFilterActive(F))}${capsHtml}</div>
         <div class="fb-title" style="margin-top:8px">Kisaran harga</div><div class="fb-chips">${bandsHtml}</div>
         <div class="fb-minmax"><label>Harga min<select id="fbMin">${priceOpts(F.min, 'Tanpa batas')}</select></label><label>Harga maks<select id="fbMax">${priceOpts(F.max, 'Tanpa batas')}</select></label></div></div>
@@ -118,12 +125,12 @@
     }
     if (a === 'clear') {
       const k = b.dataset.k;
-      if (k === 'jenis') F.jenis = '';
-      else if (k === 'brand') F.brand = '';
+      if (k === 'jenis') F.jenis = b.dataset.v ? F.jenis.filter((x) => x !== b.dataset.v) : [];
+      else if (k === 'brand') F.brand = b.dataset.v ? F.brand.filter((x) => x !== b.dataset.v) : [];
       else if (k === 'harga') setPrice(null, null);
       else if (k === 'stok') F.stock = 'all';
-    } else if (a === 'jenis') F.jenis = b.dataset.v;
-    else if (a === 'brand') F.brand = b.dataset.v;
+    } else if (a === 'jenis') F.jenis = toggleIn(F.jenis, b.dataset.v);
+    else if (a === 'brand') F.brand = toggleIn(F.brand, b.dataset.v);
     else if (a === 'stock') F.stock = b.dataset.v;
     else if (a === 'price') {
       const mn = b.dataset.min === '' ? null : Number(b.dataset.min);
@@ -147,7 +154,7 @@
       setPrice(mn === '' ? null : Number(mn), mx === '' ? null : Number(mx));
       apply();
     } else if (t.id === 'fbBrandMore' && t.value) {
-      F.brand = t.value;
+      if (!F.brand.includes(t.value)) F.brand = F.brand.concat([t.value]);
       apply();
     }
   });
