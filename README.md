@@ -64,13 +64,13 @@ Tombol **💳 Leasing** di header (bisa dipakai frontliner dan staf). Cari produ
 - Banner "Data belum diperbarui hari ini" sudah dihapus. Waktu pembaruan stok tetap tampil di bagian atas halaman.
 
 ## Pencarian & Filter
-- **Pencarian**: nama, kode barang, nomor seri, dan barcode. Barcode bisa diketik, ditempel, di-scan alat scanner, atau di-scan lewat **kamera HP** (tombol 📷, hanya muncul di browser yang mendukung `BarcodeDetector`, mis. Chrome Android). Barcode persis / nomor seri / kode persis selalu tampil paling atas dan tidak terkena filter.
+- **Pencarian**: nama, kode barang, nomor seri, dan barcode. Barcode bisa diketik, ditempel, atau di-scan dengan alat scanner. Barcode persis / nomor seri / kode persis selalu tampil paling atas dan tidak terkena filter.
 - Satu barang boleh punya **beberapa barcode** (baris ganda atau beberapa barcode dalam satu sel Excel).
 - Teks dari HP dibersihkan otomatis (angka lebar penuh, spasi tak terlihat, strip khusus).
 - **Filter** (tombol ⚙ Filter di bawah kolom cari): Jenis (HP, Tablet, Laptop & PC, Jam, Aksesoris, Sparepart), Brand, Harga (pilihan “Maks …”, kisaran “2–3 jt”, atau dropdown min/maks — tanpa mengetik angka), Stok (Semua / Ready / Ready + Indent), dan Urutan (paling cocok, termurah, termahal, stok terbanyak). Bisa dipakai tanpa kata kunci untuk “browse”, mis. HP Samsung maks 3 jt.
 - Jenis & brand dibaca dari kode barang `KATEGORI.BRAND.JENISnomor` (mis. `GAD.SAM.HP01453`). Nama brand, jenis, dan pilihan harga diatur di `js/filter-config.js`.
 - Kalau data gagal dimuat dari server (mis. sinyal HP lemah), muncul peringatan yang terlihat semua pengguna beserta tombol “Muat ulang data”; pemuatan juga dicoba ulang otomatis sampai 3 kali.
-- File: `js/search-core.js` (logika), `js/filter-ui.js` (tampilan filter), `js/camera-scan.js`, `css/filter.css`.
+- File: `js/search-core.js` (logika), `js/filter-ui.js` (tampilan filter), `css/filter.css`.
 
 ## Arti status stok di kartu barang
 | Tampilan | Arti |

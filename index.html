@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="css/style.css?v=4" />
 <link rel="stylesheet" href="css/nota.css?v=1" />
 <link rel="stylesheet" href="css/leasing.css?v=1" />
-<link rel="stylesheet" href="css/filter.css?v=1" />
+<link rel="stylesheet" href="css/filter.css?v=2" />
 </head>
 <body>
 <div id="app">
@@ -157,7 +157,6 @@
  <div class="search-wrap">
  <div class="search-row">
  <input type="text" id="searchInput" placeholder="Scan barcode atau ketik nama / kode barang..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" />
- <button id="camBtn" type="button" class="cam-btn" aria-label="Scan barcode dengan kamera" title="Scan barcode dengan kamera" hidden>📷</button>
  </div>
  <div id="filterBar" class="fb-bar"></div>
  </div>
@@ -165,13 +164,6 @@
  <div id="loadWarn" class="load-warn" hidden></div>
  <div id="results"></div>
  <div class="note" id="footNote"></div>
-
- <div id="camOverlay" role="dialog" aria-modal="true" aria-label="Scan barcode dengan kamera">
- <video id="camVideo" playsinline muted></video>
- <div class="cam-frame"></div>
- <div id="camMsg">Arahkan kamera ke barcode</div>
- <button id="camClose" type="button">Tutup</button>
- </div>
 
  <div id="deleteOverlay">
  <div id="deleteBox" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
@@ -241,9 +233,8 @@
 <script src="js/upload.js?v=8"></script>
 <script src="js/delete.js?v=5"></script>
 <script src="js/search.js?v=6"></script>
-<script src="js/scanner.js?v=4"></script>
+<script src="js/scanner.js?v=5"></script>
 <script src="js/filter-ui.js?v=1"></script>
-<script src="js/camera-scan.js?v=1"></script>
 <script src="js/leasing-ui.js?v=1"></script>
 <script src="js/nota-config.js?v=1"></script>
 <script src="js/nota-core.js?v=2"></script>
