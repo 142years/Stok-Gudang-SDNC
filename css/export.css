@@ -11,7 +11,10 @@
 .ex-opt input { width: 16px; height: 16px; }
 .ex-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .ex-go { flex: 1 1 140px; font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 12px; border-radius: 10px; border: 1px solid var(--staff); background: var(--staff-bg); color: var(--staff); cursor: pointer; }
+.ex-go.main { background: var(--staff); color: #fff; }
+.ex-go:disabled { opacity: .55; cursor: wait; }
 .ex-go:active { opacity: .8; }
+.ex-hint { font-size: 11.5px; color: var(--muted); margin-top: 8px; line-height: 1.45; }
 #printArea { display: none; }
 @media (max-width: 640px) { #exportBar { padding: 8px 12px 0; } #exportPanel { margin: 8px 12px 0; } }
 @media print {
@@ -28,5 +31,9 @@
   #printArea th, #printArea td { border: 1px solid #555; padding: 4px 6px; text-align: left; vertical-align: top; }
   #printArea th { background: #e8e8e8; font-weight: 700; }
   #printArea td.c { text-align: center; }
+  #printArea td.n { white-space: nowrap; }
+  #printArea tr.grp { break-after: avoid; page-break-after: avoid; }
+  #printArea tr.grp td { background: #d6e2f4; font-weight: 700; }
+  #printArea tr.grp small { font-weight: 400; }
   #printArea td.r { text-align: right; white-space: nowrap; }
 }
