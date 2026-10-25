@@ -45,7 +45,7 @@ Tombol **💳 Leasing** di header (bisa dipakai frontliner dan staf). Cari produ
 ## Sumber data (setelah file Price List dihapus)
 | Data | Sumber | Catatan |
 |---|---|---|
-| Stok sendiri (READY) & stok cabang lain (INDENT) | **Stock Available** | Gudang SDNC yang dihitung diatur di `js/stock-config.js` (default `SDNC.UTM` dan `SDNC.SHO`; **DEM** dan **RUS** tidak dihitung) |
+| Stok sendiri (READY) & stok cabang lain (INDENT) | **Stock Available** | Gudang SDNC yang dihitung diatur di `js/stock-config.js` (default `SDNC.UTM`, `SDNC.SHO`, dan `SDNX.STR`; **DEM** dan **RUS** tidak dihitung. `SDNX.STR` dihitung dari kolom In Stock bila lebih besar dari Available + Allocated) |
 | Nomor seri / FIFO | **Serial Number** | |
 | Harga | **Price List Reborn** (kolom Retail) | Satu-satunya sumber harga |
 | Barcode | Data Barcode | |

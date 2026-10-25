@@ -114,11 +114,13 @@ function buildCatalog(snRows, fileName) {
     if (desc && !snDesc[itemCode]) snDesc[itemCode] = desc;
 
     if (whcode && (status === 'Available' || status === 'Allocated')) {
-      if (whcode.startsWith('SDN')) {
+      const whU = whcode.toUpperCase();
+      // Aturan sama dengan upload.js: awalan SDNC, atau gudang yang didaftarkan di STOCK_OWN_WAREHOUSES (mis. SDNX.STR)
+      if (whU.startsWith('SDNC') || STOCK_OWN_WAREHOUSES.includes(whU)) {
         // Gudang sendiri: Allocated tetap ditampilkan (fisik masih bisa ada, alokasi bisa di-cancel untuk dijual)
         if (serial && admDate) {
           const unit = { serial, whcode, admissionDate: admDate.display, ts: admDate.ts, status };
-          const target = STOCK_OWN_WAREHOUSES.includes(whcode.toUpperCase()) ? ownUnitsMap : nonReadyUnitsMap;
+          const target = STOCK_OWN_WAREHOUSES.includes(whU) ? ownUnitsMap : nonReadyUnitsMap;
           if (!target[itemCode]) target[itemCode] = [];
           target[itemCode].push(unit);
         }
