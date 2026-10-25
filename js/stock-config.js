@@ -6,6 +6,9 @@
 const STOCK_OWN_WAREHOUSES = ['SDNC.UTM', 'SDNC.SHO', 'SDNX.STR'];
 
 // Catatan: SDNX.STR (awalan SDNX, bukan SDNC) sengaja didaftarkan di sini supaya dihitung READY.
+// Gudang di bawah ini jumlahnya diambil dari kolom "In Stock" (fisik) kalau lebih besar dari Available + Allocated,
+// karena barang di SDNX.STR belum berstatus ready di SAP (kolom Available bisa 0) dan tidak punya nomor seri.
+const STOCK_COUNT_INSTOCK = ['SDNX.STR'];
 
 // Gudang SDNC yang BUKAN stok jual tetap ditampilkan sebagai keterangan (mis. "Di SDNC · DEMO 1 pcs"),
 // supaya barangnya tidak dikira INDENT/HABIS padahal ada di SDNC. Kode di sini = kode gudang di SAP.

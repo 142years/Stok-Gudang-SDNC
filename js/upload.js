@@ -54,8 +54,12 @@ function parseStockAvailRows(rows) {
     const wh = whcode.toUpperCase();
     if (wh.startsWith('SDNC') || STOCK_OWN_WAREHOUSES.includes(wh)) {
       if (STOCK_OWN_WAREHOUSES.includes(wh)) {
-        const a = Math.max(0, available),
-          l = Math.max(0, allocated);
+        let a = Math.max(0, available);
+        const l = Math.max(0, allocated);
+        if (STOCK_COUNT_INSTOCK.includes(wh)) {
+          const inStock = Math.max(0, Number(r[5]) || 0); // kolom In Stock
+          if (a + l < inStock) a = inStock - l;
+        }
         if (a > 0 || l > 0) {
           if (!own[itemCode]) own[itemCode] = { a: 0, l: 0 };
           own[itemCode].a += a;
