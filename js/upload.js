@@ -52,7 +52,7 @@ function parseStockAvailRows(rows) {
     if (desc && !descMap[itemCode]) descMap[itemCode] = desc;
     if (!whcode) continue;
     const wh = whcode.toUpperCase();
-    if (wh.startsWith('SDNC')) {
+    if (wh.startsWith('SDNC') || STOCK_OWN_WAREHOUSES.includes(wh)) {
       if (STOCK_OWN_WAREHOUSES.includes(wh)) {
         const a = Math.max(0, available),
           l = Math.max(0, allocated);
