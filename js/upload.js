@@ -140,10 +140,44 @@ function mergeOthers(snOthers, stockOthers) {
   return Object.keys(merged).length ? merged : null;
 }
 
+// Data Stock Available yang tersimpan di server dihitung saat upload. Kalau sebuah gudang baru didaftarkan di
+// STOCK_OWN_WAREHOUSES (mis. SDNX.STR) setelah upload itu, gudangnya masih tercatat sebagai "cabang lain" (INDENT).
+// Fungsi ini memindahkannya ke stok sendiri saat data dimuat, jadi tidak perlu menunggu upload ulang.
+// (Jumlah lama = kolom Available; aturan In Stock penuh baru berlaku setelah Stock Available di-upload ulang.)
+function normalizeOwnWarehouses() {
+  const ownSet = STOCK_OWN_WAREHOUSES.map((w) => w.toUpperCase());
+  const isOwn = (wh) => ownSet.includes(String(wh).trim().toUpperCase());
+  if (stockAvailOwn !== null) {
+    Object.keys(stockAvailMap).forEach((code) => {
+      const m = stockAvailMap[code];
+      Object.keys(m).forEach((wh) => {
+        if (!isOwn(wh)) return;
+        const q = Number(m[wh]) || 0;
+        delete m[wh];
+        if (q > 0) {
+          if (!stockAvailOwn[code]) stockAvailOwn[code] = { a: 0, l: 0 };
+          stockAvailOwn[code].a += q;
+        }
+      });
+      if (!Object.keys(m).length) delete stockAvailMap[code];
+    });
+  }
+  if (catalog && catalog.items) {
+    catalog.items.forEach((it) => {
+      if (!it.snOthers) return;
+      Object.keys(it.snOthers).forEach((wh) => {
+        if (isOwn(wh)) delete it.snOthers[wh];
+      });
+      if (!Object.keys(it.snOthers).length) it.snOthers = null;
+    });
+  }
+}
+
 // Terapkan ulang data Stock Available ke catalog yang sudah ada, tanpa perlu upload ulang PL/SN.
 // Dipanggil setelah upload file Stock Available baru, atau setelah data dimuat dari cloud saat startup.
 function recomputeOthersWithStockAvail() {
   if (!catalog || !catalog.items) return;
+  normalizeOwnWarehouses();
   const existingCodes = new Set();
   const applyOwn = stockAvailOwn !== null; // null = data Stock Available lama (belum ada stok sendiri): jangan ubah
   const applyOwnX = stockAvailOwnX !== null;
