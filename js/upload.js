@@ -61,9 +61,11 @@ function parseStockAvailRows(rows) {
           if (a + l < inStock) a = inStock - l;
         }
         if (a > 0 || l > 0) {
-          if (!own[itemCode]) own[itemCode] = { a: 0, l: 0 };
+          if (!own[itemCode]) own[itemCode] = { a: 0, l: 0, w: {} };
           own[itemCode].a += a;
           own[itemCode].l += l;
+          // rincian per gudang (a + l), supaya kartu bisa menampilkan kode gudang walau barangnya tanpa nomor seri
+          own[itemCode].w[wh] = (own[itemCode].w[wh] || 0) + a + l;
         }
       }
       else {
@@ -157,6 +159,9 @@ function normalizeOwnWarehouses() {
         if (q > 0) {
           if (!stockAvailOwn[code]) stockAvailOwn[code] = { a: 0, l: 0 };
           stockAvailOwn[code].a += q;
+          const wk = String(wh).trim().toUpperCase();
+          if (!stockAvailOwn[code].w) stockAvailOwn[code].w = {};
+          stockAvailOwn[code].w[wk] = (stockAvailOwn[code].w[wk] || 0) + q;
         }
       });
       if (!Object.keys(m).length) delete stockAvailMap[code];
@@ -193,6 +198,7 @@ function recomputeOthersWithStockAvail() {
       it.available = o ? o.a : 0;
       it.allocatedOwn = o ? o.l : 0;
       it.inOwnList = !!o;
+      it.ownByWh = o && o.w ? o.w : null;
     }
     if (applyOwnX) it.ownNonReady = stockAvailOwnX[it.code] || null;
   });
@@ -214,6 +220,7 @@ function recomputeOthersWithStockAvail() {
       otherUnits: null,
       ownUnits: null,
       inOwnList: !!o,
+      ownByWh: o && o.w ? o.w : null,
       ownNonReady: applyOwnX ? stockAvailOwnX[code] || null : null,
       fromStockAvail: true,
     });

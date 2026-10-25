@@ -1,14 +1,33 @@
 // Pencarian, kartu barang, FIFO, dan verifikasi SN
 const FIFO_PREVIEW_LIMIT = 5;
 
+// Stok sendiri per gudang yang TIDAK punya nomor seri di file SN (mis. SDNX.STR): [{ wh, qty }]
+function ownNoSerialRows(it) {
+  if (!it.ownByWh) return [];
+  const units = it.ownUnits || [];
+  const rows = [];
+  Object.keys(it.ownByWh).forEach((wh) => {
+    const withSn = units.filter((u) => String(u.whcode).toUpperCase() === wh.toUpperCase()).length;
+    const rest = (Number(it.ownByWh[wh]) || 0) - withSn;
+    if (rest > 0) rows.push({ wh, qty: rest });
+  });
+  return rows;
+}
+
 function renderFifoList(it) {
-  if (!it.ownUnits || it.ownUnits.length === 0) return '';
+  const units = it.ownUnits || [];
+  const noSn = ownNoSerialRows(it);
+  if (units.length === 0 && noSn.length === 0) return '';
   const isOpen = openFifo.has(it.code);
-  const label = isOpen ? 'Sembunyikan Serial Number' : `Lihat Serial Number (FIFO) · ${it.ownUnits.length} unit`;
+  const noSnTotal = noSn.reduce((a, r) => a + r.qty, 0);
+  let label;
+  if (isOpen) label = units.length ? 'Sembunyikan Serial Number' : 'Sembunyikan stok per gudang';
+  else if (units.length) label = `Lihat Serial Number (FIFO) · ${units.length} unit${noSnTotal ? ` + ${noSnTotal} pcs tanpa SN` : ''}`;
+  else label = `Lihat stok per gudang · ${noSnTotal} pcs`;
   let listHtml = '';
   if (isOpen) {
-    const shown = it.ownUnits.slice(0, FIFO_PREVIEW_LIMIT);
-    const remaining = it.ownUnits.length - shown.length;
+    const shown = units.slice(0, FIFO_PREVIEW_LIMIT);
+    const remaining = units.length - shown.length;
     listHtml =
       '<div class="fifo-list">' +
       shown
@@ -22,6 +41,16 @@ function renderFifoList(it) {
         )
         .join('') +
       (remaining > 0 ? `<div class="fifo-more">dan ${remaining} lainnya</div>` : '') +
+      noSn
+        .map(
+          (r) => `
+ <div class="fifo-row">
+ <span>${escapeHtml(r.wh)} · tanpa nomor seri</span>
+ <span>${r.qty} pcs</span>
+ </div>
+ `,
+        )
+        .join('') +
       '</div>';
   }
   return `<button class="fifo-toggle" data-code="${escapeHtml(it.code)}">${label}</button>${listHtml}`;
