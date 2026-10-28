@@ -133,7 +133,7 @@ setInterval(async function () {
   for (const a of AUX_SYNC) {
     if (syncBusy.has(a.key)) continue;
     try {
-      const { data, error } = await sbClient.from('app_data').select('meta:payload->meta').eq('key', a.key).limit(1);
+      const { data, error } = await DataAPI.readMeta(a.key);
       if (error || !data || !data[0] || !data[0].meta) continue;
       const cur = a.meta();
       if (cur && cur.updatedAt === data[0].meta.updatedAt) continue;

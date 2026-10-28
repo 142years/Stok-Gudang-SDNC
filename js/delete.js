@@ -24,7 +24,7 @@ let deleteArmed = false,
 
 async function cloudKeyExists(key) {
   try {
-    const { data, error } = await sbClient.from('app_data').select('key').eq('key', key).limit(1);
+    const { data, error } = await DataAPI.keyExists(key);
     if (error) return { ok: false, exists: null, message: error.message };
     return { ok: true, exists: !!(data && data.length) };
   } catch (e) {
@@ -36,7 +36,7 @@ async function deleteCloudKey(key) {
   syncBusy.add(key);
   try {
     try {
-      const { error } = await sbClient.from('app_data').delete().eq('key', key);
+      const { error } = await DataAPI.deleteKey(key);
       if (error) return { ok: false, message: error.message };
     } catch (e) {
       return { ok: false, message: e.message || String(e) };

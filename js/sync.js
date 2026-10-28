@@ -8,7 +8,7 @@ async function fetchLatestPayload(key) {
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt) await new Promise((r) => setTimeout(r, 500 * attempt));
     try {
-      const { data, error } = await sbClient.from('app_data').select('payload').eq('key', key).limit(1);
+      const { data, error } = await DataAPI.readPayload(key);
       if (error) {
         last = { ok: false, payload: null, message: error.message };
         continue;
@@ -28,7 +28,7 @@ async function fetchLatestPayload(key) {
 // Hasil { unchanged: true } = data ada di server dan tidak berubah.
 async function fetchLatestIfChanged(key, currentStamp) {
   try {
-    const { data, error } = await sbClient.from('app_data').select('u:payload->>updatedAt').eq('key', key).limit(1);
+    const { data, error } = await DataAPI.readStamp(key);
     if (error) return { ok: false, payload: null, message: error.message };
     if (!data || !data[0]) return { ok: true, payload: null, message: '' };
     if (currentStamp && data[0].u && data[0].u === currentStamp) return { ok: true, payload: null, unchanged: true, message: '' };
@@ -155,15 +155,13 @@ async function saveCatalogToCloudRaw(key, payloadData) {
   } catch (e) {}
 
   try {
-    const { error: delErr } = await sbClient.from('app_data').delete().eq('key', key);
-    if (delErr) {
-      console.error(`Gagal membersihkan data lama "${key}":`, delErr.message);
-      return { ok: false, message: `Gagal hapus data lama (${delErr.message})` };
-    }
-    const { error: insErr } = await sbClient.from('app_data').insert({ key: key, payload: payloadData });
-    if (insErr) {
-      console.error(`Gagal simpan "${key}" ke server:`, insErr.message);
-      return { ok: false, message: `Gagal simpan (${insErr.message})` };
+    const { error: wErr } = await DataAPI.writeKey(key, payloadData);
+    if (wErr) {
+      console.error(`Gagal simpan "${key}" ke server:`, wErr.message);
+      return {
+        ok: false,
+        message: wErr.stage === 'delete' ? `Gagal hapus data lama (${wErr.message})` : `Gagal simpan (${wErr.message})`,
+      };
     }
 
     // VERIFIKASI: baca lagi datanya untuk pastikan benar-benar tersimpan & BISA dibaca balik.
@@ -171,7 +169,7 @@ async function saveCatalogToCloudRaw(key, payloadData) {
     // INSERT/DELETE tapi tidak mengizinkan SELECT untuk role anon, perintah simpan di atas
     // akan terlihat "berhasil" (tidak ada error) padahal datanya tidak akan pernah bisa
     // dibaca balik oleh siapapun — baik di device ini maupun device lain.
-    const { data: checkData, error: checkErr } = await sbClient.from('app_data').select('key').eq('key', key).limit(1);
+    const { data: checkData, error: checkErr } = await DataAPI.keyExists(key);
     if (checkErr) {
       return { ok: false, message: `Tersimpan tapi gagal diverifikasi ulang (${checkErr.message})` };
     }
