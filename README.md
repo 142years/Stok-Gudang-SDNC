@@ -34,6 +34,9 @@ Web app gudang (HTML + CSS + JavaScript biasa, tanpa build). Bisa langsung diedi
 - Mau ganti PIN staff atau Supabase? Cukup `js/config.js`.
 
 
+## Gudang Khusus (rusak / demo / keep)
+Tombol **📦 Gudang Khusus** di header (untuk semua pengguna). Tab **RUSAK · DEMO · KEEP** (`SDNC.RUS`, `SDNC.DEM`, `SDNC.KEP`) menampilkan barang di tiap gudang beserta jumlah dan nomor serinya (ketuk barang untuk melihat SN; sisa yang tidak punya SN ditulis terpisah). Kolom cari bisa memakai nama, kode barang, atau serial number. **Salin** (tempel ke Excel/chat) dan **Unduh Excel** mengikuti daftar yang sedang tampil. Daftar gudang & labelnya diatur di `STOCK_SPECIAL_WAREHOUSES` (`js/stock-config.js`).
+
 ## Skema Leasing (biaya admin per produk)
 Tombol **💳 Leasing** di header (bisa dipakai frontliner dan staf). Cari produk → lihat biaya admin per lembaga/program (Indodana, SPayLater/ShopeePay, Kredivo, KreditPlus, Samsung Finance+, HCI, Akulaku, bank, dll.).
 - Sumber data: file `SKEMA_LEASING_….xlsx` (sheet REKAP). **Staf** mengunggahnya lewat “Upload File” (dikenali otomatis dari judul kolom), disimpan di Supabase key `leasing:latest`.
@@ -45,7 +48,7 @@ Tombol **💳 Leasing** di header (bisa dipakai frontliner dan staf). Cari produ
 ## Sumber data (setelah file Price List dihapus)
 | Data | Sumber | Catatan |
 |---|---|---|
-| Stok sendiri (READY) & stok cabang lain (INDENT) | **Stock Available** | Gudang SDNC yang dihitung diatur di `js/stock-config.js` (default `SDNC.UTM`, `SDNC.SHO`, dan `SDNX.STR`; **DEM** dan **RUS** tidak dihitung. `SDNX.STR` dihitung dari kolom In Stock bila lebih besar dari Available + Allocated) |
+| Stok sendiri (READY) & stok cabang lain (INDENT) | **Stock Available** | Gudang yang dihitung READY diatur di `js/stock-config.js` (default `SDNC.UTM`, `SDNC.SHO`, `SDNX.SHO`, `SDNX.STR`, `SDNC.RUS`, `SDNC.DEM`, `SDNC.KEP`). Gudang di `STOCK_COUNT_INSTOCK` dihitung dari kolom In Stock bila lebih besar dari Available + Allocated. Kartu produk menampilkan kode gudang, nomor seri (kalau ada), dan penanda RUSAK/DEMO/KEEP |
 | Nomor seri / FIFO | **Serial Number** | |
 | Harga | **Price List Reborn** (kolom Retail) | Satu-satunya sumber harga |
 | Barcode | Data Barcode | |

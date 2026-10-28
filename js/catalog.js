@@ -151,7 +151,9 @@ function buildCatalog(snRows, fileName) {
 
   const serialIndex = {};
   Object.keys(ownUnitsMap).forEach((code) => {
-    ownUnitsMap[code].sort((a, b) => a.ts - b.ts);
+    // Unit di gudang biasa diurutkan FIFO lebih dulu; unit gudang khusus (rusak/demo/keep) di belakangnya,
+    // jadi tidak pernah dianggap "unit FIFO pertama".
+    ownUnitsMap[code].sort((a, b) => (whSpecialLabel(a.whcode) ? 1 : 0) - (whSpecialLabel(b.whcode) ? 1 : 0) || a.ts - b.ts);
     ownUnitsMap[code].forEach((u, idx) => {
       serialIndex[u.serial] = {
         code,
@@ -160,6 +162,7 @@ function buildCatalog(snRows, fileName) {
         admissionDate: u.admissionDate,
         whcode: u.whcode,
         status: u.status,
+        special: whSpecialLabel(u.whcode),
         rank: idx,
         oldestSerial: ownUnitsMap[code][0].serial,
         oldestDate: ownUnitsMap[code][0].admissionDate,

@@ -32,8 +32,8 @@ function validateStockAvailRows(rows) {
 
 // Kolom file "Stock Available": #, Warehouse Code, Item No., Item Description, Available, In Stock, Allocated, Item Cost
 // Satu file ini memuat stok SEMUA gudang:
-//  - gudang SDNC yang terdaftar di STOCK_OWN_WAREHOUSES (js/stock-config.js) -> stok sendiri ("own": Available & Allocated)
-//  - gudang SDNC lain (demo/rusak) -> tidak dihitung
+//  - gudang yang terdaftar di STOCK_OWN_WAREHOUSES (js/stock-config.js) -> stok sendiri ("own": Available & Allocated)
+//  - gudang SDNC lain yang tidak terdaftar -> hanya keterangan ("ownx"), tidak dihitung
 //  - gudang cabang lain -> "map" (dipakai untuk status INDENT)
 // Kolom Item Cost (harga pokok) sengaja tidak dibaca.
 function parseStockAvailRows(rows) {
@@ -75,7 +75,7 @@ function parseStockAvailRows(rows) {
           ownx[itemCode][whcode] = (ownx[itemCode][whcode] || 0) + q;
         }
       }
-      continue; // SDNC.DEM / SDNC.RUS dst: tidak dihitung sebagai stok jual
+      continue; // gudang SDNC yang tidak terdaftar sebagai stok sendiri: hanya keterangan, tidak dihitung
     }
     if (available <= 0) continue;
     if (!map[itemCode]) map[itemCode] = {};
@@ -143,29 +143,46 @@ function mergeOthers(snOthers, stockOthers) {
 }
 
 // Data Stock Available yang tersimpan di server dihitung saat upload. Kalau sebuah gudang baru didaftarkan di
-// STOCK_OWN_WAREHOUSES (mis. SDNX.STR) setelah upload itu, gudangnya masih tercatat sebagai "cabang lain" (INDENT).
+// STOCK_OWN_WAREHOUSES (mis. SDNX.STR) setelah upload itu, gudangnya masih tercatat sebagai "cabang lain" (INDENT)
+// atau sebagai keterangan non-jual (SDNC.RUS/DEM/KEP).
 // Fungsi ini memindahkannya ke stok sendiri saat data dimuat, jadi tidak perlu menunggu upload ulang.
 // (Jumlah lama = kolom Available; aturan In Stock penuh baru berlaku setelah Stock Available di-upload ulang.)
 function normalizeOwnWarehouses() {
   const ownSet = STOCK_OWN_WAREHOUSES.map((w) => w.toUpperCase());
   const isOwn = (wh) => ownSet.includes(String(wh).trim().toUpperCase());
+  const addOwn = (code, wh, q) => {
+    if (!(q > 0)) return;
+    if (!stockAvailOwn[code]) stockAvailOwn[code] = { a: 0, l: 0 };
+    stockAvailOwn[code].a += q;
+    const wk = String(wh).trim().toUpperCase();
+    if (!stockAvailOwn[code].w) stockAvailOwn[code].w = {};
+    stockAvailOwn[code].w[wk] = (stockAvailOwn[code].w[wk] || 0) + q;
+  };
   if (stockAvailOwn !== null) {
+    // 1) tersimpan sebagai cabang lain (mis. SDNX.STR / SDNX.SHO)
     Object.keys(stockAvailMap).forEach((code) => {
       const m = stockAvailMap[code];
       Object.keys(m).forEach((wh) => {
         if (!isOwn(wh)) return;
         const q = Number(m[wh]) || 0;
         delete m[wh];
-        if (q > 0) {
-          if (!stockAvailOwn[code]) stockAvailOwn[code] = { a: 0, l: 0 };
-          stockAvailOwn[code].a += q;
-          const wk = String(wh).trim().toUpperCase();
-          if (!stockAvailOwn[code].w) stockAvailOwn[code].w = {};
-          stockAvailOwn[code].w[wk] = (stockAvailOwn[code].w[wk] || 0) + q;
-        }
+        addOwn(code, wh, q);
       });
       if (!Object.keys(m).length) delete stockAvailMap[code];
     });
+    // 2) tersimpan sebagai keterangan "bukan stok jual" (mis. SDNC.RUS / SDNC.DEM / SDNC.KEP, jumlah = In Stock)
+    if (stockAvailOwnX) {
+      Object.keys(stockAvailOwnX).forEach((code) => {
+        const m = stockAvailOwnX[code];
+        Object.keys(m).forEach((wh) => {
+          if (!isOwn(wh)) return;
+          const q = Number(m[wh]) || 0;
+          delete m[wh];
+          addOwn(code, wh, q);
+        });
+        if (!Object.keys(m).length) delete stockAvailOwnX[code];
+      });
+    }
   }
   if (catalog && catalog.items) {
     catalog.items.forEach((it) => {
@@ -229,6 +246,7 @@ function recomputeOthersWithStockAvail() {
   catalog.items = catalog.items.filter((it) => !(it.fromStockAvail && !it.others && !(it.available > 0 || it.allocatedOwn > 0) && !it.ownNonReady));
   if (searchInput.value.trim()) doSearch();
   else renderEmpty();
+  if (typeof specialRefresh === 'function') specialRefresh(); // menu Gudang Khusus (kalau sedang terbuka)
 }
 
 // Pembaca CSV: mengenali pemisah (; , atau tab), tanda kutip, dan BOM UTF-8.

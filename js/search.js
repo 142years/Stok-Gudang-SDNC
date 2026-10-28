@@ -14,6 +14,27 @@ function ownNoSerialRows(it) {
   return rows;
 }
 
+// Penanda gudang khusus (RUSAK / DEMO / KEEP) di samping kode gudang; kosong untuk gudang biasa
+function specialTag(wh) {
+  const l = whSpecialLabel(wh);
+  return l ? ` <span class="wh-tag">${escapeHtml(l)}</span>` : '';
+}
+// Stok READY yang berada di gudang khusus: { total, text } atau null (butuh rincian per gudang dari Stock Available)
+function ownSpecialInfo(it) {
+  if (!it.ownByWh) return null;
+  let total = 0;
+  const parts = [];
+  Object.keys(it.ownByWh).forEach((wh) => {
+    const l = whSpecialLabel(wh);
+    const q = Number(it.ownByWh[wh]) || 0;
+    if (l && q > 0) {
+      total += q;
+      parts.push(`${l} ${q}`);
+    }
+  });
+  return total > 0 ? { total, text: parts.join(' · ') } : null;
+}
+
 function renderFifoList(it) {
   const units = it.ownUnits || [];
   const noSn = ownNoSerialRows(it);
@@ -33,9 +54,9 @@ function renderFifoList(it) {
       shown
         .map(
           (u, idx) => `
- <div class="fifo-row${idx === 0 ? ' first' : ''}">
- <span>${idx === 0 ? '➜ ' : ''}${escapeHtml(u.serial)}${u.status === 'Allocated' ? ' <span class="badge-mini">Allocated</span>' : ''}</span>
- <span>${escapeHtml(u.admissionDate)} · ${escapeHtml(u.whcode)}</span>
+ <div class="fifo-row${idx === 0 && !whSpecialLabel(u.whcode) ? ' first' : ''}">
+ <span>${idx === 0 && !whSpecialLabel(u.whcode) ? '➜ ' : ''}${escapeHtml(u.serial)}${u.status === 'Allocated' ? ' <span class="badge-mini">Allocated</span>' : ''}</span>
+ <span>${escapeHtml(u.admissionDate)} · ${escapeHtml(u.whcode)}${specialTag(u.whcode)}</span>
  </div>
  `,
         )
@@ -45,7 +66,7 @@ function renderFifoList(it) {
         .map(
           (r) => `
  <div class="fifo-row">
- <span>${escapeHtml(r.wh)} · tanpa nomor seri</span>
+ <span>${escapeHtml(r.wh)}${specialTag(r.wh)} · tanpa nomor seri</span>
  <span>${r.qty} pcs</span>
  </div>
  `,
@@ -153,6 +174,13 @@ function renderItem(it) {
       readyCount > 0 || it.others
         ? `<div class="alloc-note muted">Ada juga di SDNC (bukan stok jual): ${escapeHtml(nr.text)}.</div>`
         : `<div class="alloc-note">Ada di gudang SDNC sebagai unit ${escapeHtml(nr.text)} — bukan stok jual.</div>`;
+  }
+  const sp = ownSpecialInfo(it);
+  if (sp && readyCount > 0) {
+    notesHtml +=
+      sp.total >= readyCount
+        ? `<div class="alloc-note">⚠ Seluruh stok ini ada di gudang khusus: <b>${escapeHtml(sp.text)} pcs</b> — bukan stok jual biasa, cek kondisi/statusnya dulu.</div>`
+        : `<div class="alloc-note muted">Termasuk di gudang khusus: ${escapeHtml(sp.text)} pcs (bukan stok jual biasa).</div>`;
   }
   let barcodeHtml = '';
   if (staffMode) {
@@ -283,6 +311,13 @@ verifyInput.addEventListener('input', function () {
 });
 
 function fifoNoteHtml(hit) {
+  if (hit.special) {
+    const warn =
+      hit.status === 'Allocated'
+        ? '<br/><span class="verify-warn">⚠ Status: Allocated — minta cancel alokasi di sistem SAP dulu.</span>'
+        : '';
+    return `<span class="verify-warn">⚠ Unit ${escapeHtml(hit.special)} di ${escapeHtml(hit.whcode)} (masuk ${escapeHtml(hit.admissionDate)}) — bukan stok jual biasa, di luar urutan FIFO.</span>${warn}`;
+  }
   if (hit.nonReady) {
     const lbl = STOCK_NONREADY_LABELS[String(hit.whcode).toUpperCase()] || hit.whcode;
     return `<span class="verify-warn">⚠ Unit ${escapeHtml(lbl)} di ${escapeHtml(hit.whcode)} — bukan stok jual, jangan dijual sebagai barang baru.</span>`;
