@@ -102,6 +102,7 @@ function buildCatalog(snRows, fileName) {
   const ownUnitsMap = {};
   const nonReadyUnitsMap = {}; // unit di gudang SDNC non-jual (demo/rusak): tidak masuk FIFO
   const otherUnitsMap = {}; // { itemCode: { whcode: [ {serial, admissionDate, ts} ] } } — SN milik cabang lain
+  const extraUnitsMap = {}; // SN di gudang khusus (RUS/DEM/KEP) dengan status selain Available/Allocated: cadangan, dipakai hanya bila stok > SN
   for (let i = 1; i < snRows.length; i++) {
     const r = snRows[i];
     if (!r || !r[1]) continue;
@@ -113,13 +114,25 @@ function buildCatalog(snRows, fileName) {
     const status = r[7] ? String(r[7]).trim() : '';
     if (desc && !snDesc[itemCode]) snDesc[itemCode] = desc;
 
+    if (whcode && serial && status !== 'Available' && status !== 'Allocated' && whSpecialLabel(whcode)) {
+      if (!extraUnitsMap[itemCode]) extraUnitsMap[itemCode] = [];
+      extraUnitsMap[itemCode].push({
+        serial,
+        whcode,
+        admissionDate: admDate ? admDate.display : '',
+        ts: admDate ? admDate.ts : 0,
+        status: status || 'Lainnya',
+      });
+    }
+
     if (whcode && (status === 'Available' || status === 'Allocated')) {
       const whU = whcode.toUpperCase();
       // Aturan sama dengan upload.js: awalan SDNC, atau gudang yang didaftarkan di STOCK_OWN_WAREHOUSES (mis. SDNX.STR)
       if (whU.startsWith('SDNC') || STOCK_OWN_WAREHOUSES.includes(whU)) {
         // Gudang sendiri: Allocated tetap ditampilkan (fisik masih bisa ada, alokasi bisa di-cancel untuk dijual)
-        if (serial && admDate) {
-          const unit = { serial, whcode, admissionDate: admDate.display, ts: admDate.ts, status };
+        // Tanggal masuk boleh kosong / format tidak dikenal: SN tetap dicatat (dulu dibuang, jadi dianggap "tanpa nomor seri")
+        if (serial) {
+          const unit = { serial, whcode, admissionDate: admDate ? admDate.display : '', ts: admDate ? admDate.ts : 0, status };
           const target = STOCK_OWN_WAREHOUSES.includes(whU) ? ownUnitsMap : nonReadyUnitsMap;
           if (!target[itemCode]) target[itemCode] = [];
           target[itemCode].push(unit);
@@ -194,6 +207,7 @@ function buildCatalog(snRows, fileName) {
     ...Object.keys(snDesc),
     ...Object.keys(ownUnitsMap),
     ...Object.keys(nonReadyUnitsMap),
+    ...Object.keys(extraUnitsMap),
     ...Object.keys(stockAvailMap),
   ]);
   const items = [];
@@ -209,6 +223,7 @@ function buildCatalog(snRows, fileName) {
       snOthers: snOthers,
       otherUnits: otherUnitsMap[code] || null,
       ownUnits: ownUnitsMap[code] || null,
+      ownUnitsExtra: extraUnitsMap[code] || null,
       inOwnList: false,
       fromStockAvail: !snOthers && !ownUnitsMap[code] && !snDesc[code] && !!stockAvailMap[code],
     });

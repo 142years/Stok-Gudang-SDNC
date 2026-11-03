@@ -1,5 +1,5 @@
 // Stock Opname Harian
-// ===== Stock Opname Harian — format baru: 1 sheet per gudang/cabang =====
+// ===== Stock Opname Harian — 1 sheet per gudang/cabang (dua format, lihat SO_LAYOUT_* di bawah) =====
 // Tiap sheet berisi: blok HP/Gadget -> blok Aksesoris -> tabel ITR ("No ITR").
 // Kolom A = nomor urut; B..L = Warehouse Code, Item Code, Deskripsi, SN/IMEI, Group Name,
 // SAP, Fisik, Selisih, Hasil, No. Inventory Posting, Keterangan.
@@ -24,10 +24,69 @@ function soFmtDate(v) {
   return String(v).trim();
 }
 
+// Dua format file SO dikenali otomatis (pembuat Excel berbeda):
+//  - Format lama : 1 sheet per gudang, kolom A = nomor urut, "Warehouse Code" di kolom B; tabel ITR ("No ITR") ada di sheet yang sama.
+//  - Format baru : "Warehouse Code" di kolom A (Warehouse Code, Item Code, Item Description, Serial Number, SAP, FISIK, SELISIH, STATUS);
+//                  ITR di sheet terpisah bernama "<gudang>_ITR" (Posting Date, Doc. No., From/To Warehouse, Remarks,
+//                  Jumah Hari (Gantung), Tgl. Pengiriman, No. Resi, Nama Ekspedisi/Karyawan, Keterangan).
+const SO_LAYOUT_OLD = { wh: 1, code: 2, desc: 3, detail: 4, group: 5, sap: 6, posting: 10, ket: 11 };
+const SO_LAYOUT_NEW = { wh: 0, code: 1, desc: 2, detail: 3, group: -1, sap: 4, posting: -1, ket: 7 };
+
+function soCellUp(r, i) {
+  return soCell(r, i).toUpperCase();
+}
+function soHasSoHeader(rows) {
+  return rows.some((r) => r && (soCellUp(r, 0) === 'WAREHOUSE CODE' || soCellUp(r, 1) === 'WAREHOUSE CODE'));
+}
+function soLayoutOf(rows) {
+  const h = rows.find((r) => r && (soCellUp(r, 0) === 'WAREHOUSE CODE' || soCellUp(r, 1) === 'WAREHOUSE CODE'));
+  return h && soCellUp(h, 0) === 'WAREHOUSE CODE' ? SO_LAYOUT_NEW : SO_LAYOUT_OLD;
+}
+// Sheet ITR format baru: ada baris header "Posting Date" + "Doc. No."
+function soIsItrSheet(rows) {
+  return rows.some((r) => r && soCellUp(r, 0) === 'POSTING DATE' && soCellUp(r, 1).startsWith('DOC'));
+}
+
+function parseItrSheet(rows, idRef) {
+  const out = [];
+  let started = false;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r) continue;
+    if (!started) {
+      if (soCellUp(r, 0) === 'POSTING DATE' && soCellUp(r, 1).startsWith('DOC')) started = true;
+      continue;
+    }
+    const docNo = soCell(r, 1);
+    if (!docNo) continue;
+    const gantung = Number(soCell(r, 5));
+    out.push({
+      id: idRef.n++,
+      code: docNo,
+      tanggal: soFmtDate(r[0]),
+      asal: soCell(r, 2),
+      tujuan: soCell(r, 3),
+      remaks: soCell(r, 4),
+      qty: '',
+      hari: isNaN(gantung) || soCell(r, 5) === '' ? '' : String(Math.abs(gantung)), // di Excel berupa angka negatif (-8)
+      jenis: '',
+      tglKirim: soFmtDate(r[6]),
+      resi: soCell(r, 7),
+      ekspedisi: soCell(r, 8),
+      ket: soCell(r, 9),
+      checked: false,
+    });
+  }
+  return out;
+}
+
 function parseSoSheet(rows, idRef) {
   const out = { madeBy: '', hp: [], acc: [], itr: [] };
+  const L = soLayoutOf(rows);
+  const colLabel = L.wh; // label blok (GADGET / AKSESORIS) ada di kolom yang sama dengan Warehouse Code
   let section = null; // 'HP' | 'ACC' | null (blok tanpa label)
   let inItr = false;
+  let seenHeader = false; // baris judul di atas header (mis. "TANGGAL | 03/11/2026") bukan data barang
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -36,11 +95,13 @@ function parseSoSheet(rows, idRef) {
     const b = soCell(r, 1).toUpperCase();
 
     if (a.startsWith('DIBUAT OLEH')) {
-      out.madeBy = soCell(r, 1);
+      // format lama: nama di kolom B; format baru: "DIBUAT OLEH : ALYA" dalam satu sel
+      const inline = soCell(r, 0).replace(/^DIBUAT OLEH\s*:?\s*/i, '').trim();
+      out.madeBy = inline || soCell(r, 1);
       continue;
     }
 
-    // Awal tabel ITR
+    // Awal tabel ITR (format lama, satu sheet)
     if (b === 'NO ITR') {
       inItr = true;
       continue;
@@ -68,29 +129,34 @@ function parseSoSheet(rows, idRef) {
     }
 
     // Header kolom -> lewati
-    if (b === 'WAREHOUSE CODE') continue;
-
-    // Baris label blok (kolom Item Code kosong): GADGET / GAD -> HP, ACCESORIS -> ACC
-    if (b && !soCell(r, 2)) {
-      if (b === 'GADGET' || b === 'GAD') section = 'HP';
-      else if (b.startsWith('ACC')) section = 'ACC';
+    if (soCellUp(r, L.wh) === 'WAREHOUSE CODE') {
+      seenHeader = true;
       continue;
     }
 
-    const whcode = soCell(r, 1);
-    const code = soCell(r, 2);
+    // Baris label blok (kolom Item Code kosong): GADGET / GAD -> HP, ACCESORIS / AKSESORIS -> ACC
+    const label = soCellUp(r, colLabel);
+    if (label && !soCell(r, L.code)) {
+      if (label === 'GADGET' || label === 'GAD') section = 'HP';
+      else if (label.startsWith('ACC') || label.startsWith('AKS')) section = 'ACC';
+      continue;
+    }
+
+    if (!seenHeader) continue;
+    const whcode = soCell(r, L.wh);
+    const code = soCell(r, L.code);
     if (!whcode || !code) continue; // baris kosong bawaan template (nomor urut + SAP default 1)
 
     const item = {
       id: idRef.n++,
       whcode,
       code,
-      desc: soCell(r, 3),
-      detail: soCell(r, 4), // SN / IMEI
-      group: soCell(r, 5),
-      sapQty: Number(soCell(r, 6)) || 0,
-      posting: soCell(r, 10),
-      ket: soCell(r, 11),
+      desc: soCell(r, L.desc),
+      detail: soCell(r, L.detail), // SN / IMEI
+      group: L.group >= 0 ? soCell(r, L.group) : '',
+      sapQty: Number(soCell(r, L.sap)) || 0,
+      posting: L.posting >= 0 ? soCell(r, L.posting) : '',
+      ket: soCell(r, L.ket),
       checked: false,
     };
 
@@ -106,18 +172,28 @@ function parseSoWorkbook(wb, fileName) {
   const idRef = { n: 1 };
   const sheets = {};
   const order = [];
+  const itrSheets = []; // [{ name, rows }] — sheet ITR terpisah (format baru)
   wb.SheetNames.forEach((name) => {
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: null });
-    const isSoSheet = rows.some(
-      (r) =>
-        r &&
-        String(r[1] || '')
-          .trim()
-          .toUpperCase() === 'WAREHOUSE CODE',
-    );
-    if (!isSoSheet) return;
-    sheets[name] = parseSoSheet(rows, idRef);
-    order.push(name);
+    if (soHasSoHeader(rows)) {
+      sheets[name] = parseSoSheet(rows, idRef);
+      order.push(name);
+    } else if (soIsItrSheet(rows)) {
+      itrSheets.push({ name, rows });
+    }
+  });
+  // Tempel ITR ke gudangnya: "SDNC_ITR" -> sheet "SDNC" (huruf besar/kecil & spasi diabaikan)
+  itrSheets.forEach(({ name, rows }) => {
+    const base = name.replace(/[\s_\-]*ITR\s*$/i, '').trim();
+    const target = order.find((n) => n.trim().toUpperCase() === base.toUpperCase());
+    const list = parseItrSheet(rows, idRef);
+    if (target) sheets[target].itr = (sheets[target].itr || []).concat(list);
+    else if (list.length) {
+      // Tidak ada sheet SO dengan nama itu: tetap tampilkan ITR-nya sebagai gudang sendiri
+      const key = base || name;
+      sheets[key] = { madeBy: '', hp: [], acc: [], itr: list };
+      order.push(key);
+    }
   });
   return { fileName, sheets, sheetOrder: order, updatedAt: new Date().toISOString() };
 }
@@ -312,7 +388,7 @@ function renderSoModules() {
             // Data lama (sebelum format baru) hanya punya "detail"
             const line1 =
               item.asal || item.tujuan
-                ? `${escapeHtml(item.asal || '-')} → ${escapeHtml(item.tujuan || '-')}${item.tanggal ? ' · ' + escapeHtml(item.tanggal) : ''}${item.qty ? ' · Qty: ' + escapeHtml(item.qty) : ''}`
+                ? `${escapeHtml(item.asal || '-')} → ${escapeHtml(item.tujuan || '-')}${item.tanggal ? ' · ' + escapeHtml(item.tanggal) : ''}${item.qty ? ' · Qty: ' + escapeHtml(item.qty) : ''}${item.hari ? ' · Gantung ' + escapeHtml(item.hari) + ' hari' : ''}`
                 : escapeHtml(item.detail || '');
             const line2 = item.remaks
               ? `<div style="color:var(--muted); font-size:11px;">${escapeHtml(item.remaks)}</div>`

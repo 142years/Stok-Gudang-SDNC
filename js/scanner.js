@@ -134,6 +134,7 @@ function scanBlocked() {
     pinOverlay.classList.contains('show') ||
     deleteOverlay.classList.contains('show') ||
     soModalOverlay.classList.contains('show') ||
+    !!(document.getElementById('spOverlay') && document.getElementById('spOverlay').classList.contains('show')) || // Gudang Khusus punya scanner sendiri (special-ui.js)
     (typeof leasingIsOpen === 'function' && leasingIsOpen())
   );
 }

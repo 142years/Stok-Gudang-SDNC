@@ -195,6 +195,59 @@ function normalizeOwnWarehouses() {
   }
 }
 
+// Gudang khusus (RUSAK / DEMO / KEEP): jumlah stok dari Stock Available adalah patokan. Kalau SN yang berstatus
+// Available/Allocated kurang dari jumlah itu, kekurangannya diisi dari SN gudang yang sama dengan status lain
+// (cadangan dari file Serial Number), supaya barangnya tidak salah tampil "tanpa nomor seri".
+// Aman dipanggil berulang: hasil isian sebelumnya (fill: true) dibuang dulu lalu dihitung ulang.
+function fillSpecialUnits() {
+  if (!catalog || !catalog.items) return;
+  if (!catalog.serialIndex) catalog.serialIndex = {};
+  const sI = catalog.serialIndex;
+  Object.keys(sI).forEach((k) => {
+    if (sI[k] && sI[k].fill) delete sI[k];
+  });
+  catalog.items.forEach((it) => {
+    if (it.ownUnits) {
+      it.ownUnits = it.ownUnits.filter((u) => !u.fill);
+      if (!it.ownUnits.length) it.ownUnits = null;
+    }
+    if (!it.ownUnitsExtra || !it.ownByWh) return;
+    let added = false;
+    Object.keys(it.ownByWh).forEach((wh) => {
+      if (!whSpecialLabel(wh)) return;
+      const W = wh.toUpperCase();
+      const have = (it.ownUnits || []).filter((u) => String(u.whcode).toUpperCase() === W).length;
+      const need = (Number(it.ownByWh[wh]) || 0) - have;
+      if (need <= 0) return;
+      it.ownUnitsExtra
+        .filter((u) => String(u.whcode).toUpperCase() === W)
+        .sort((a, b) => a.ts - b.ts)
+        .slice(0, need)
+        .forEach((u) => {
+          if (!it.ownUnits) it.ownUnits = [];
+          it.ownUnits.push(Object.assign({}, u, { fill: true }));
+          added = true;
+          if (!sI[u.serial]) {
+            sI[u.serial] = {
+              code: it.code,
+              desc: it.desc,
+              price: null,
+              admissionDate: u.admissionDate,
+              whcode: u.whcode,
+              status: u.status,
+              special: whSpecialLabel(u.whcode),
+              rank: null,
+              oldestSerial: '',
+              oldestDate: '',
+              fill: true,
+            };
+          }
+        });
+    });
+    if (added) it.ownUnits.sort((a, b) => (whSpecialLabel(a.whcode) ? 1 : 0) - (whSpecialLabel(b.whcode) ? 1 : 0) || a.ts - b.ts);
+  });
+}
+
 // Terapkan ulang data Stock Available ke catalog yang sudah ada, tanpa perlu upload ulang PL/SN.
 // Dipanggil setelah upload file Stock Available baru, atau setelah data dimuat dari cloud saat startup.
 function recomputeOthersWithStockAvail() {
@@ -242,6 +295,7 @@ function recomputeOthersWithStockAvail() {
       fromStockAvail: true,
     });
   });
+  fillSpecialUnits();
   // Buang barang yang HANYA muncul karena Stock Available, kalau datanya sudah tidak ada
   catalog.items = catalog.items.filter((it) => !(it.fromStockAvail && !it.others && !(it.available > 0 || it.allocatedOwn > 0) && !it.ownNonReady));
   if (searchInput.value.trim()) doSearch();
