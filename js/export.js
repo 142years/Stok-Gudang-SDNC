@@ -300,7 +300,7 @@
   const bar = document.createElement('div');
   bar.id = 'exportBar';
   bar.hidden = true;
-  bar.innerHTML = '<button type="button" id="exportBtn" class="ex-open" aria-expanded="false">⬇ Ekspor / Cetak</button>';
+  bar.innerHTML = '<button type="button" id="exportBtn" class="ex-open" aria-expanded="false">Ekspor / Cetak</button>';
   const panel = document.createElement('div');
   panel.id = 'exportPanel';
   panel.hidden = true;
@@ -310,9 +310,9 @@
     '<div class="ex-grp">Kolom yang dicetak</div><div class="ex-row">' + chk('kode', 'Kode', opts.kode) + chk('brand', 'Brand', opts.brand) + chk('stok', 'Stok', opts.stok) + '</div>' +
     '<div class="ex-grp">Barang</div><div class="ex-row">' + chk('hideNoPrice', 'Sembunyikan barang tanpa harga', opts.hideNoPrice) + chk('hideLdu', 'Sembunyikan barang LDU / unit demo', opts.hideLdu) + '</div>' +
     '<div class="ex-grp">Keterangan</div><div class="ex-row">' + chk('meta', 'Sertakan keterangan (filter, jumlah, waktu data, tanggal cetak)', opts.meta) + '</div>' +
-    '<div class="ex-btns"><button type="button" class="ex-go main" data-act="pdf">📄 Unduh PDF</button>' +
-    '<button type="button" class="ex-go" data-act="xlsx">📊 Unduh Excel</button>' +
-    '<button type="button" class="ex-go" data-act="print">🖨 Cetak (printer)</button></div>' +
+    '<div class="ex-btns"><button type="button" class="ex-go main" data-act="pdf">Unduh PDF</button>' +
+    '<button type="button" class="ex-go" data-act="xlsx">Unduh Excel</button>' +
+    '<button type="button" class="ex-go" data-act="print">Cetak (printer)</button></div>' +
     '<div class="ex-hint">Unduh PDF langsung menyimpan file. Cetak memakai dialog printer browser (bisa juga &quot;Simpan sebagai PDF&quot;).</div>';
   resultsEl.parentNode.insertBefore(bar, resultsEl);
   resultsEl.parentNode.insertBefore(panel, resultsEl);

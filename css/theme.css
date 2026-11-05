@@ -1,24 +1,37 @@
-/* Warna & mode terang/gelap — ubah warna di sini */
+/* Warna & mode terang/gelap. Ubah warna di sini.
+   Arah visual: label rak / price tag di kertas hangat, tinta hitam, SATU aksen oranye-tag.
+   Aksen hanya dipakai di titik fokus: kolom cari, tombol utama, kilas hasil scan.
+   Status stok (hijau/kuning/merah) selalu didampingi teks, bukan warna saja. */
 :root {
-  color-scheme: dark;
-  --bg: #181b22;
-  --panel: #20242d;
-  --panel-2: #262b35;
-  --panel-3: #2e3440;
-  --line: #323744;
-  --text: #edeff3;
-  --muted: #8b92a3;
-  --ready: #34b37a;
-  --ready-bg: #1b3329;
-  --indent: #e2a63b;
-  --indent-bg: #332a15;
-  --out: #c15b4a;
-  --out-bg: #301e1c;
-  --staff: #5a8dee;
-  --staff-bg: #182238;
-  --focus: #4a5468;
-  --on-staff: #0b0d12;
-  --overlay: rgba(10, 11, 15, 0.78);
+  color-scheme: light;
+  --bg: #f3f0e8;
+  --panel: #fffefb;
+  --panel-2: #ece8dc;
+  --panel-3: #e2ddcf;
+  --line: #d3cdbd; /* garis pemisah (dekoratif) */
+  --line-strong: #8c8675; /* batas kontrol: input, tombol, chip (min 3:1) */
+  --text: #1d1c19;
+  --muted: #5e5a50;
+  --accent: #b83a06;
+  --on-accent: #ffffff;
+  --ready: #17663a;
+  --ready-bg: #ddefe2;
+  --indent: #734400;
+  --indent-bg: #f6e6c2;
+  --out: #9e2a1b;
+  --out-bg: #f7dcd6;
+  /* "staff" = keadaan aktif/terpilih: tinta, bukan warna merek */
+  --staff: #1d1c19;
+  --staff-bg: #e5e0d2;
+  --on-staff: #f3f0e8;
+  --focus: #1d1c19;
+  --overlay: rgba(29, 28, 25, 0.5);
+  --shadow-lift: 0 10px 30px rgba(29, 28, 25, 0.22); /* hanya untuk dialog/lembar yang melayang di atas halaman */
+  --font-ui: 'IBM Plex Sans Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  --r-s: 3px; /* chip, badge, tag */
+  --r-m: 6px; /* kartu, input, tombol */
+  --r-l: 10px; /* dialog dan lembar */
   --so-list-h: clamp(220px, calc(100vh - 360px), 560px);
 }
 @supports (height: 100dvh) {
@@ -26,26 +39,30 @@
     --so-list-h: clamp(220px, calc(100dvh - 360px), 560px);
   }
 }
-:root[data-theme='light'] {
-  color-scheme: light;
-  --bg: #f3f5f9;
-  --panel: #ffffff;
-  --panel-2: #edf0f5;
-  --panel-3: #e1e6ee;
-  --line: #d5dbe5;
-  --text: #1a1f2b;
-  --muted: #5b6478;
-  --ready: #16794a;
-  --ready-bg: #e0f4ea;
-  --indent: #8f5c00;
-  --indent-bg: #fcf0d6;
-  --out: #b03a2a;
-  --out-bg: #fce6e1;
-  --staff: #2455c3;
-  --staff-bg: #e5edfd;
-  --focus: #8895ae;
-  --on-staff: #ffffff;
-  --overlay: rgba(20, 28, 45, 0.45);
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #151410;
+  --panel: #1d1c17;
+  --panel-2: #26241e;
+  --panel-3: #302d26;
+  --line: #3a372e;
+  --line-strong: #7c7766;
+  --text: #eeeae0;
+  --muted: #a8a294;
+  --accent: #ff8a4c;
+  --on-accent: #151410;
+  --ready: #5cc884;
+  --ready-bg: #17301f;
+  --indent: #e8b04a;
+  --indent-bg: #33280f;
+  --out: #f0806e;
+  --out-bg: #3a1a15;
+  --staff: #eeeae0;
+  --staff-bg: #2c2a22;
+  --on-staff: #151410;
+  --focus: #eeeae0;
+  --overlay: rgba(0, 0, 0, 0.66);
+  --shadow-lift: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 html {
   -webkit-text-size-adjust: 100%;
@@ -56,4 +73,46 @@ html.theme-anim * {
     background-color 0.25s ease,
     color 0.25s ease,
     border-color 0.25s ease !important;
+}
+/* Lapisan dasar: kursor kontrol, label tersembunyi, fokus. Diset sekali di sini, bukan per komponen. */
+a[href],
+button,
+summary,
+select,
+label[for],
+input[type='checkbox'],
+input[type='radio'],
+input[type='file'],
+[role='button'],
+[role='tab'],
+[role='switch'] {
+  cursor: pointer;
+}
+button:disabled,
+select:disabled,
+input:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.fld-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }

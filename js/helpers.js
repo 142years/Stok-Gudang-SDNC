@@ -8,7 +8,7 @@ function escapeHtml(s) {
 }
 
 function fmtRupiah(n) {
-  if (n === null || n === undefined || isNaN(n)) return '—';
+  if (n === null || n === undefined || isNaN(n)) return '-';
   return 'Rp' + Math.round(n).toLocaleString('id-ID');
 }
 

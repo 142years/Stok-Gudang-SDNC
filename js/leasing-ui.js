@@ -68,9 +68,9 @@
       res
         .map((it) => {
           const i = LEASING.items.indexOf(it);
-          return `<button type="button" class="ls-card" data-act="pick" data-i="${i}"><div class="ls-card-n">${esc(it.n)}</div><div class="ls-card-m">${esc(it.b)}${it.dup ? ' · <span class="warn">⚠ data ganda</span>' : ''}</div></button>`;
+          return `<button type="button" class="ls-card" data-act="pick" data-i="${i}"><div class="ls-card-n">${esc(it.n)}</div><div class="ls-card-m">${esc(it.b)}${it.dup ? ' · <span class="warn">data ganda</span>' : ''}</div></button>`;
         })
-        .join('') + (res.length >= LEASING_CONFIG.maxResults ? `<div class="ls-hint">Menampilkan ${res.length} teratas — persempit pencarian.</div>` : '');
+        .join('') + (res.length >= LEASING_CONFIG.maxResults ? `<div class="ls-hint">Menampilkan ${res.length} teratas, persempit pencarian.</div>` : '');
   }
 
   // ---------- rincian produk ----------
@@ -87,10 +87,10 @@
     body.innerHTML = `<div class="ls-wrap">
       <button type="button" class="ls-back" data-act="back">← Cari produk lain</button>
       <div class="ls-prod"><div class="ls-prod-n">${esc(it.n)}</div><div class="ls-prod-m">${esc(it.b)}${staffMode ? ` · baris Excel ${it.r}` : ''}</div></div>
-      ${it.dup ? `<div class="ls-warn">⚠ Ada ${same.length} baris dengan nama ini di file dan isinya berbeda (${same.map((x) => `baris Excel ${x.r}${x.b ? ' [' + esc(x.b) + ']' : ''}`).join(' dan ')}). Pastikan versi yang benar sebelum memberi tahu pelanggan.</div>` : ''}
-      <div class="ls-rule"><b>Patokan:</b> pakai kolom pembiayaan yang <u>diajukan pelanggan</u>. Tanda ❌ berarti tidak ada subsidi, maka berlaku biaya ${esc(cfg.bafLabel)}.</div>
+      ${it.dup ? `<div class="ls-warn">Ada ${same.length} baris dengan nama ini di file dan isinya berbeda (${same.map((x) => `baris Excel ${x.r}${x.b ? ' [' + esc(x.b) + ']' : ''}`).join(' dan ')}). Pastikan versi yang benar sebelum memberi tahu pelanggan.</div>` : ''}
+      <div class="ls-rule"><b>Patokan:</b> pakai kolom pembiayaan yang <u>diajukan pelanggan</u>. Tanda silang di Excel berarti tidak ada subsidi, maka berlaku biaya ${esc(cfg.bafLabel)}.</div>
       ${noteHtml()}
-      ${it.e !== null ? `<div class="ls-baf"><div class="ls-baf-t">${esc(cfg.bafLabel)}</div><div class="ls-baf-v">${esc(rp(it.e))}</div><div class="ls-baf-s">Berlaku bila pelanggan mengajukan ${esc(cfg.bafLabel)}, atau bila program yang dipilih bertanda ❌.</div></div>` : ''}
+      ${it.e !== null ? `<div class="ls-baf"><div class="ls-baf-t">${esc(cfg.bafLabel)}</div><div class="ls-baf-v">${esc(rp(it.e))}</div><div class="ls-baf-s">Berlaku bila pelanggan mengajukan ${esc(cfg.bafLabel)}, atau bila program yang dipilih bertanda silang.</div></div>` : ''}
       <div class="ls-chips"><button type="button" class="chip${S.prov ? '' : ' on'}" data-act="prov" data-p="">Semua</button>${groups
         .map((g) => `<button type="button" class="chip${S.prov === g.name ? ' on' : ''}" data-act="prov" data-p="${esc(g.name)}">${esc(g.name)}</button>`)
         .join('')}</div>

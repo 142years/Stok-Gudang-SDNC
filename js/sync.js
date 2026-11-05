@@ -130,9 +130,9 @@ async function loadCatalog() {
 
   if (cloudErrors.length) {
     console.error('Sebagian data gagal dimuat dari server (dipakai cadangan lokal):', cloudErrors);
-    statusEl.textContent = `⚠ Gagal memuat dari server, dipakai data lokal perangkat ini: ${cloudErrors.join(' | ')}`;
+    statusEl.textContent = `Gagal memuat dari server, dipakai data lokal perangkat ini: ${cloudErrors.join(' | ')}`;
   } else if (notes.length) {
-    statusEl.textContent = `⚠ Data berikut hanya ada di perangkat ini (belum tersimpan di server): ${notes.join(', ')}. Upload ulang untuk menyinkronkan.`;
+    statusEl.textContent = `Data berikut hanya ada di perangkat ini (belum tersimpan di server): ${notes.join(', ')}. Upload ulang untuk menyinkronkan.`;
   }
 
   recomputeOthersWithStockAvail();
@@ -176,7 +176,7 @@ async function saveCatalogToCloudRaw(key, payloadData) {
     if (!checkData || checkData.length === 0) {
       return {
         ok: false,
-        message: `Data terkirim TANPA error, tapi saat dibaca ulang tidak ditemukan sama sekali. Ini tanda kuat ada masalah izin akses (RLS policy) di tabel "app_data" — kemungkinan besar role "anon" diizinkan menulis (INSERT/DELETE) tapi TIDAK diizinkan membaca (SELECT). Tambahkan policy SELECT untuk role anon di Supabase.`,
+        message: `Data terkirim TANPA error, tapi saat dibaca ulang tidak ditemukan sama sekali. Ini tanda kuat ada masalah izin akses (RLS policy) di tabel "app_data", kemungkinan besar role "anon" diizinkan menulis (INSERT/DELETE) tapi TIDAK diizinkan membaca (SELECT). Tambahkan policy SELECT untuk role anon di Supabase.`,
       };
     }
 

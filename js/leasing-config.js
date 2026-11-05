@@ -6,9 +6,9 @@ const LEASING_CONFIG = {
   showHiddenPrograms: false,
 
   // Teks hasil per sel di tabel skema
-  textFree: '✔ Gratis biaya admin (disubsidi)', // sel berisi ✔
+  textFree: 'Gratis biaya admin (disubsidi)', // sel berisi ✔
   textFeePrefix: 'Biaya admin', // sel berisi angka -> "Biaya admin Rp110.000"
-  textNoSubsidy: '❌ Tidak ada subsidi', // sel berisi ❌
+  textNoSubsidy: 'Tidak ada subsidi', // sel berisi ❌
   textNoSubsidyFallback: 'berlaku Sub Leasing BAF / MEGAZIP', // ditambah angka kolom E bila ada
   textNoData: 'Tidak ada data',
 

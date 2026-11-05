@@ -5,14 +5,14 @@
   var meta = document.querySelector('meta[name="theme-color"]');
   function paint(t) {
     root.setAttribute('data-theme', t);
-    if (meta) meta.setAttribute('content', t === 'light' ? '#F3F5F9' : '#181B22');
+    if (meta) meta.setAttribute('content', t === 'light' ? '#F3F0E8' : '#151410');
     if (btn) {
       var label = t === 'light' ? 'Ganti ke mode gelap' : 'Ganti ke mode terang';
       btn.setAttribute('aria-label', label);
       btn.title = label;
     }
   }
-  paint(root.getAttribute('data-theme') || 'dark');
+  paint(root.getAttribute('data-theme') || 'light');
   if (btn)
     btn.addEventListener('click', function () {
       var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';

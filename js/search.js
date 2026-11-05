@@ -60,7 +60,7 @@ function renderFifoList(it) {
     const remaining = regular.length - shown.length;
     const rowHtml = (u, first) => `
  <div class="fifo-row${first ? ' first' : ''}">
- <span>${first ? '➜ ' : ''}${escapeHtml(u.serial)}${unitStatusBadge(u)}</span>
+ <span>${first ? '<span class="wh-tag go">ambil dulu</span> ' : ''}${escapeHtml(u.serial)}${unitStatusBadge(u)}</span>
  <span>${escapeHtml(u.admissionDate)}${u.admissionDate ? ' · ' : ''}${escapeHtml(u.whcode)}${specialTag(u.whcode)}</span>
  </div>
  `;
@@ -109,7 +109,7 @@ function renderBranchesToggle(it) {
                   .map(
                     (u, idx) => `
  <div class="fifo-row${idx === 0 ? ' first' : ''}">
- <span>${idx === 0 ? '➜ ' : ''}${escapeHtml(u.serial)}${u.status === 'Allocated' ? ' <span class="badge-mini">Allocated</span>' : ''}</span>
+ <span>${idx === 0 ? '<span class="wh-tag go">ambil dulu</span> ' : ''}${escapeHtml(u.serial)}${u.status === 'Allocated' ? ' <span class="badge-mini">Allocated</span>' : ''}</span>
  <span>${escapeHtml(u.admissionDate)}</span>
  </div>
  `,
@@ -174,7 +174,7 @@ function renderItem(it) {
   // Keterangan untuk SEMUA barang (bukan hanya yang bernomor seri)
   let notesHtml = '';
   if (alloc > 0) {
-    notesHtml += `<div class="alloc-note">⚠ <b>${alloc} pcs berstatus Allocated</b>${free > 0 ? ` (bebas ${free} pcs)` : ' — tidak ada yang bebas'}. Fisik masih di gudang SDNC; minta cancel alokasi di SAP dulu sebelum dijual ke customer.</div>`;
+    notesHtml += `<div class="alloc-note"><b>${alloc} pcs berstatus Allocated</b>${free > 0 ? ` (bebas ${free} pcs)` : ', tidak ada yang bebas'}. Fisik masih di gudang SDNC; minta cancel alokasi di SAP dulu sebelum dijual ke customer.</div>`;
   }
   if (nr) {
     notesHtml +=
@@ -186,7 +186,7 @@ function renderItem(it) {
   if (sp && readyCount > 0) {
     notesHtml +=
       sp.total >= readyCount
-        ? `<div class="alloc-note">⚠ Semua di gudang khusus: <b>${escapeHtml(sp.text)}</b></div>`
+        ? `<div class="alloc-note">Semua di gudang khusus: <b>${escapeHtml(sp.text)}</b></div>`
         : `<div class="alloc-note muted">Termasuk gudang khusus: ${escapeHtml(sp.text)}</div>`;
   }
   let barcodeHtml = '';
@@ -321,22 +321,22 @@ function fifoNoteHtml(hit) {
   if (hit.special) {
     const warn =
       hit.status === 'Allocated'
-        ? '<br/><span class="verify-warn">⚠ Status: Allocated — minta cancel alokasi di sistem SAP dulu.</span>'
+        ? '<br/><span class="verify-warn">Status: Allocated: minta cancel alokasi di sistem SAP dulu.</span>'
         : '';
-    return `<span class="verify-warn">⚠ Unit ${escapeHtml(hit.special)} di ${escapeHtml(hit.whcode)}${hit.admissionDate ? ' (masuk ' + escapeHtml(hit.admissionDate) + ')' : ''} — di luar FIFO.</span>${warn}`;
+    return `<span class="verify-warn">Unit ${escapeHtml(hit.special)} di ${escapeHtml(hit.whcode)}${hit.admissionDate ? ' (masuk ' + escapeHtml(hit.admissionDate) + ')' : ''}, di luar FIFO.</span>${warn}`;
   }
   if (hit.nonReady) {
     const lbl = STOCK_NONREADY_LABELS[String(hit.whcode).toUpperCase()] || hit.whcode;
-    return `<span class="verify-warn">⚠ Unit ${escapeHtml(lbl)} di ${escapeHtml(hit.whcode)} — bukan stok jual.</span>`;
+    return `<span class="verify-warn">Unit ${escapeHtml(lbl)} di ${escapeHtml(hit.whcode)}, bukan stok jual.</span>`;
   }
   const allocWarn =
     hit.status === 'Allocated'
-      ? '<br/><span class="verify-warn">⚠ Status: Allocated — minta cancel alokasi di sistem SAP dulu sebelum dijual ke customer.</span>'
+      ? '<br/><span class="verify-warn">Status: Allocated: minta cancel alokasi di sistem SAP dulu sebelum dijual ke customer.</span>'
       : '';
   if (hit.rank === 0) {
-    return `<span class="verify-ok">✔ Sesuai urutan FIFO</span> — masuk ${escapeHtml(hit.admissionDate)}, di ${escapeHtml(hit.whcode)}.${allocWarn}`;
+    return `<span class="verify-ok">Sesuai urutan FIFO</span>. Masuk ${escapeHtml(hit.admissionDate)}, di ${escapeHtml(hit.whcode)}.${allocWarn}`;
   }
-  return `<span class="verify-warn">⚠ Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}) — ambil itu dulu.${allocWarn}`;
+  return `<span class="verify-warn">Bukan unit FIFO pertama</span> (masuk ${escapeHtml(hit.admissionDate)}). Ada unit lebih lama: <b>${escapeHtml(hit.oldestSerial)}</b> (masuk ${escapeHtml(hit.oldestDate)}), ambil itu dulu.${allocWarn}`;
 }
 
 function verifyHtml(sn) {

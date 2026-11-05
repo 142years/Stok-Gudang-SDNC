@@ -36,9 +36,9 @@
     if (priceFilterActive(F)) chips.push(['harga', priceChipText()]);
     if (F.stock !== 'all') chips.push(['stok', F.stock === 'ready' ? 'Ready' : 'Ready + Indent']);
     bar.innerHTML =
-      `<button type="button" class="fb-btn${U.open ? ' on' : ''}" data-fa="toggle" aria-expanded="${U.open}">⚙ Filter${n ? ` <span class="fb-count">${n}</span>` : ''}</button>` +
+      `<button type="button" class="fb-btn${U.open ? ' on' : ''}" data-fa="toggle" aria-expanded="${U.open}">Filter${n ? ` <span class="fb-count">${n}</span>` : ''}</button>` +
       `<select id="fbSort" aria-label="Urutkan hasil">${SORTS.map(([v, l]) => `<option value="${v}"${F.sort === v ? ' selected' : ''}>${l}</option>`).join('')}</select>` +
-      chips.map(([k, t, v = '']) => `<button type="button" class="fb-chip on" data-fa="clear" data-k="${k}" data-v="${esc(v)}" title="Hapus filter">${esc(t)} ✕</button>`).join('');
+      chips.map(([k, t, v = '']) => `<button type="button" class="fb-chip on" data-fa="clear" data-k="${k}" data-v="${esc(v)}" title="Hapus filter">${esc(t)} ×</button>`).join('');
   }
 
   // ---------- panel pilihan ----------

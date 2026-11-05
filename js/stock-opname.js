@@ -274,7 +274,7 @@ soSheetSelect.addEventListener('change', function () {
 });
 
 function soCheckBtn(category, item, doneLabel, todoLabel) {
-  return `<button onclick="toggleSoItem('${category}', ${item.id})" style="background:${item.checked ? 'var(--ready-bg)' : 'var(--panel-2)'}; color:${item.checked ? 'var(--ready)' : 'var(--text)'}; border:1px solid ${item.checked ? 'var(--ready)' : 'var(--line)'}; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700; flex-shrink:0; margin-left:8px;">${item.checked ? doneLabel : todoLabel}</button>`;
+  return `<button onclick="toggleSoItem('${category}', ${item.id})" style="background:${item.checked ? 'var(--ready-bg)' : 'var(--panel-2)'}; color:${item.checked ? 'var(--ready)' : 'var(--text)'}; border:1px solid ${item.checked ? 'var(--ready)' : 'var(--line)'}; padding:4px 10px; border-radius:var(--r-s); cursor:pointer; font-size:11px; font-weight:700; flex-shrink:0; margin-left:8px;">${item.checked ? doneLabel : todoLabel}</button>`;
 }
 
 function soExtraLines(item) {
@@ -310,7 +310,7 @@ function renderSoModules() {
       const s = soData.sheets[n];
       const all = (s.hp || []).concat(s.acc || []);
       const done = all.filter((i) => i.checked).length;
-      return `<option value="${escapeHtml(n)}"${n === soSelectedSheet ? ' selected' : ''}>${escapeHtml(n)} — ${done}/${all.length}</option>`;
+      return `<option value="${escapeHtml(n)}"${n === soSelectedSheet ? ' selected' : ''}>${escapeHtml(n)}: ${done}/${all.length}</option>`;
     })
     .join('');
 
@@ -335,13 +335,13 @@ function renderSoModules() {
         : hpFiltered
             .map(
               (item) => `
-      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:var(--r-m); margin-bottom:6px;">
         <div>
           <div style="font-weight:600; color:var(--text);">${escapeHtml(item.desc)}</div>
           <div style="color:var(--muted); font-size:11px;">IMEI/SN: ${escapeHtml(item.detail || '-')} · ${escapeHtml(item.whcode)}${item.group ? ' · ' + escapeHtml(item.group) : ''}</div>
           ${soExtraLines(item)}
         </div>
-        ${soCheckBtn('hp', item, '✔ Sesuai', 'Cek')}
+        ${soCheckBtn('hp', item, 'Sesuai', 'Cek')}
       </div>
     `,
             )
@@ -366,13 +366,13 @@ function renderSoModules() {
         : accFiltered
             .map(
               (item) => `
-      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:var(--r-m); margin-bottom:6px; font-size:12px;">
         <div>
           <div style="font-weight:600; color:var(--text);">${escapeHtml(item.desc)}${item.sapQty > 1 ? ` <span style="color:var(--indent); font-weight:800;">· SAP: ${item.sapQty} pcs</span>` : ''}</div>
           <div style="color:var(--muted); font-size:11px;">Kode: ${escapeHtml(item.code)} · ${escapeHtml(item.whcode)}${item.group ? ' · ' + escapeHtml(item.group) : ''}${item.detail ? ' · SN: ' + escapeHtml(item.detail) : ''}${item.sapQty ? ` · Jumlah SAP: ${item.sapQty}` : ''}</div>
           ${soExtraLines(item)}
         </div>
-        ${soCheckBtn('acc', item, '✔ Sesuai', 'Cek')}
+        ${soCheckBtn('acc', item, 'Sesuai', 'Cek')}
       </div>
     `,
             )
@@ -406,13 +406,13 @@ function renderSoModules() {
               ? `<div style="color:var(--indent); font-size:11px;">Ket: ${escapeHtml(item.ket)}</div>`
               : '';
             return `
-      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:var(--r-m); margin-bottom:6px; font-size:12px;">
         <div>
           <div style="font-weight:600; color:var(--text);">No. ITR: ${escapeHtml(item.code)}</div>
           <div style="color:var(--muted); font-size:11px;">${line1}</div>
           ${line2}${line3}${line4}
         </div>
-        ${soCheckBtn('itr', item, '✔ Sesuai', 'Pending')}
+        ${soCheckBtn('itr', item, 'Sesuai', 'Pending')}
       </div>`;
           })
           .join('');

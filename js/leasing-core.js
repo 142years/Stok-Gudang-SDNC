@@ -143,7 +143,7 @@ function leasingBrands(data) {
 function leasingResult(item, v, cfg, rp) {
   if (typeof v === 'number') {
     return v === 0
-      ? { cls: 'free', text: 'Rp0 — tidak ada biaya admin' }
+      ? { cls: 'free', text: 'Rp0, tidak ada biaya admin' }
       : { cls: 'fee', text: `${cfg.textFeePrefix} ${rp(v)}` };
   }
   if (v === 'v') return { cls: 'free', text: cfg.textFree };

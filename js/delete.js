@@ -47,7 +47,7 @@ async function deleteCloudKey(key) {
       return {
         ok: false,
         message:
-          'data masih ada di server setelah dihapus — kemungkinan role "anon" belum punya izin DELETE (RLS) di tabel app_data',
+          'data masih ada di server setelah dihapus, kemungkinan role "anon" belum punya izin DELETE (RLS) di tabel app_data',
       };
     return { ok: true, message: '' };
   } finally {
@@ -190,8 +190,8 @@ deleteConfirm.addEventListener('click', async function () {
     return;
   }
   const lines = [];
-  okList.forEach((r) => lines.push('✓ ' + DELETE_SCOPES[r.scope].label + ' — terhapus'));
-  failList.forEach((r) => lines.push('✗ ' + DELETE_SCOPES[r.scope].label + ' — GAGAL: ' + r.message));
+  okList.forEach((r) => lines.push('✓ ' + DELETE_SCOPES[r.scope].label + ': terhapus'));
+  failList.forEach((r) => lines.push('✗ ' + DELETE_SCOPES[r.scope].label + ': GAGAL. ' + r.message));
   lines.push('Data yang gagal dihapus dibiarkan utuh di perangkat ini.');
   deleteMsg.className = 'err';
   deleteMsg.textContent = lines.join('\n');

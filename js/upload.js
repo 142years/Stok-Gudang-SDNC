@@ -380,8 +380,8 @@ async function tryBuildCatalogFromSn() {
     const result = await saveCatalogToCloud('inventory:latest', catalog);
     renderMeta();
     statusEl.textContent = result.ok
-      ? `Data berhasil disinkron ke cloud (${name}) — semua pengguna link akan melihat data ini.`
-      : `GAGAL sinkron ke cloud: ${result.message} — Data cuma tersimpan di device ini.`;
+      ? `Data berhasil disinkron ke cloud (${name}). Semua pengguna link akan melihat data ini.`
+      : `GAGAL sinkron ke cloud: ${result.message}. Data cuma tersimpan di device ini.`;
     openFifo.clear();
     openBranches.clear();
     if (searchInput.value.trim()) doSearch();
@@ -448,7 +448,7 @@ async function detectAndProcessFile(file) {
     return {
       type: 'pl',
       ok: false,
-      message: 'File Price List sudah tidak dipakai — stok diambil dari Stock Available, harga dari Price List Reborn',
+      message: 'File Price List sudah tidak dipakai. Stok diambil dari Stock Available, harga dari Price List Reborn',
     };
   }
   if (validateSnRows(rows)) {
@@ -496,7 +496,7 @@ async function detectAndProcessFile(file) {
     setCheckBadge(rebornPriceCheckBadge, 'loading', 'Membaca Price List Reborn...');
     const parsed = parseRebornPriceRows(rows);
     if (!parsed.rows) {
-      const msg = 'Kolom Retail kosong semua — tidak ada harga yang bisa dipakai.';
+      const msg = 'Kolom Retail kosong semua, tidak ada harga yang bisa dipakai.';
       setCheckBadge(rebornPriceCheckBadge, 'bad', `✗ ${msg}`);
       return { type: 'rebornprice', ok: false, message: msg };
     }
@@ -533,7 +533,7 @@ let uploadBusy = false;
 async function processUploadFiles(files) {
   if (!files.length) return;
   if (uploadBusy) {
-    statusEl.textContent = 'Masih memproses file sebelumnya — tunggu sebentar.';
+    statusEl.textContent = 'Masih memproses file sebelumnya, tunggu sebentar.';
     return;
   }
   uploadBusy = true;
@@ -617,7 +617,7 @@ function bindDropZone(zone, onDrop) {
 bindDropZone(document.getElementById('dropZone'), (files) => {
   const ok = files.filter((f) => SHEET_FILE_RE.test(f.name));
   if (ok.length) processUploadFiles(ok);
-  else statusEl.textContent = 'Format tidak didukung — gunakan .xlsx, .xls, atau .csv.';
+  else statusEl.textContent = 'Format tidak didukung. Gunakan .xlsx, .xls, atau .csv.';
 });
 
 // Kotak upload Stock Opname: satu file .xlsx (butuh banyak sheet)
